@@ -20,20 +20,21 @@ thSeries = function(sg, xVals, tVals, specificUnits) {
   return(
     structure(
       do.call(data.frame, args = c(list(time = tVals), seriesList)),
+      signal = sg,
       class = c("thSeries", "data.frame")
     )
   )
 }
 
-#' @export
-as.xts.thSeries = function(x, POSIXctRange, xRange = c(1, nrow(x)), trim = F, ...) {
-  if(trim) {
-    x = x[xRange[1]:xRange[2],]
-  }
-  numericRange = as.numeric(POSIXctRange)
-  time = x$time[xRange]
-  time2Date = lm(POSIXctRange ~ time)
-  POSIXctIndex = as.POSIXct(round(predict(time2Date, newdata = x)), origin = "1970-01-01 00:00.00 UTC")
-  class(x) = "data.frame"
-  return(xts::as.xts(x, order.by = POSIXctIndex))
-}
+# #' @export
+# as.xts.thSeries = function(x, POSIXctRange, xRange = c(1, nrow(x)), trim = F, ...) {
+#   if(trim) {
+#     x = x[xRange[1]:xRange[2],]
+#   }
+#   numericRange = as.numeric(POSIXctRange)
+#   time = x$time[xRange]
+#   time2Date = lm(POSIXctRange ~ time)
+#   POSIXctIndex = as.POSIXct(round(predict(time2Date, newdata = x)), origin = "1970-01-01 00:00.00 UTC")
+#   class(x) = "data.frame"
+#   return(xts::as.xts(x, order.by = POSIXctIndex))
+# }

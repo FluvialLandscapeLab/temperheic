@@ -1,3 +1,20 @@
+#' @export
+htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
+  myXTS = as.xts.thSeries(myThSeries, POSIXct.origin)
+  plot(myXTS$x0, main = "", ylab = "Temperature (degC)", type = 'n', auto.grid = F, minor.ticks = F)
+  lines(myXTS$x0, col = "grey70", lwd = 3, lty=2)
+  for(col in names(myXTS)[2:length(names(myXTS))]) {
+    lines(myXTS[,col], lwd = 3)
+  }
+  seriesAttr = attributes(myThSeries)
+  sg = attr(myThSeries, "signal")
+  hy = attr(sg, "hydro")
+  k = hy$hydCond
+  d = hy$dispersivity
+  text(as.numeric(min(index(myXTS))), max(myXTS$x0), pos = 4, paste0("k = ", round(k,6), "  B = ", round(d, 6)))
+}
+
+
 
 # Replaces general units (e.g., "E t-1 L-3 T-1") with specific units specified
 # by the user (e.g., "kJ s-1 m-3 degC-1")
