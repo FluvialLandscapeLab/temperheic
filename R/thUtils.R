@@ -1,4 +1,20 @@
 #' @export
+as.xts.thSeries = function(x, POSIXct.origin) {
+  theOrder = as.POSIXct(x$time, origin = POSIXct.origin)
+  x = x[-match("time", names(x))]
+  x = xts(x, order.by = theOrder)
+  return(x)
+}
+
+#' @export
+as.zoo.thSeries = function(x, POSIXct.origin) {
+  theOrder = as.POSIXct(x$time, origin = POSIXct.origin)
+  x = x[-match("time", names(x))]
+  x = zoo(x, order.by = theOrder)
+  return(x)
+}
+
+#' @export
 htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
   myXTS = as.xts.thSeries(myThSeries, POSIXct.origin)
   plot(myXTS$x0, main = "", ylab = "Temperature (degC)", type = 'n', auto.grid = F, minor.ticks = F)
@@ -15,9 +31,9 @@ htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
 }
 
 
-
 # Replaces general units (e.g., "E t-1 L-3 T-1") with specific units specified
 # by the user (e.g., "kJ s-1 m-3 degC-1")
+#' @export
 .thSpecificUnits = function(generalUnits, specificUnits = thUnits()) {
   atomicUnits = unlist(lapply(generalUnits, strsplit, split = " "), recursive = F)
 
