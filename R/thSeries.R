@@ -8,8 +8,8 @@ thSeries = function(sg, xVals, tVals, specificUnits) {
   assign("hy", attr(sg, "hydro"))
 
   # variable in eqn 8, Luce et al 2013
-  a = (1/(2*hy$diffusivity_effective))*(sqrt(((sqrt((hy$advectiveThermVel^4) + (4*bd$frequency*hy$diffusivity_effective)^2) + hy$advectiveThermVel^2)/2))-hy$advectiveThermVel)
-  b = (1/(2*hy$diffusivity_effective))* sqrt(((sqrt((hy$advectiveThermVel^4) + (4*bd$frequency*hy$diffusivity_effective)^2) - hy$advectiveThermVel^2)/2))
+  a = (1 / (2 * hy$diffusivity_effective)) * (sqrt(((sqrt((hy$advectiveThermVel^4) + (4 * 2 * pi * bd$frequency * hy$diffusivity_effective)^2) + hy$advectiveThermVel^2)/2)) - hy$advectiveThermVel)
+  b = (1 / (2 * hy$diffusivity_effective)) * sqrt(((sqrt((hy$advectiveThermVel^4) + (4 * 2 * pi * bd$frequency * hy$diffusivity_effective)^2) - hy$advectiveThermVel^2)/2))
 
   seriesList =
     lapply(
