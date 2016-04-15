@@ -211,13 +211,13 @@ thHydro = function(hydCond, dispersivity, headGrad, aq, specificUnits) {
 thSignal = function(aq, hy, bd) {
 ## TO DO:  TEST TO BE SURE UNITS ARE ALL IDENTICAL!
   ##  if(!allIdentical(ALL THE UNITS))
-  phaseVel_cond = sqrt(2 * hy$diffusivity_cond * bd$frequency)
-  phaseVel_disp = sqrt(2 * hy$diffusivity_disp * bd$frequency)
-  phaseVel = sqrt(2 * hy$diffusivity_effective * bd$frequency)
+  phaseVel_cond = sqrt(2 * hy$diffusivity_cond * 2 * pi * bd$frequency)
+  phaseVel_disp = sqrt(2 * hy$diffusivity_disp * 2 * pi * bd$frequency)
+  phaseVel = sqrt(2 * hy$diffusivity_effective * 2 * pi * bd$frequency)
 
-  thermDecayDist_cond = sqrt(2 * hy$diffusivity_cond / bd$frequency)
-  thermDecayDist_disp = sqrt(2 * hy$diffusivity_disp / bd$frequency)
-  thermDecayDist = sqrt(2 * hy$diffusivity_effective / bd$frequency)
+  thermDecayDist_cond = sqrt(2 * hy$diffusivity_cond / (2 * pi * bd$frequency))
+  thermDecayDist_disp = sqrt(2 * hy$diffusivity_disp / (2 * pi * bd$frequency))
+  thermDecayDist = sqrt(2 * hy$diffusivity_effective / (2 * pi * bd$frequency))
 
   newSignal = .temperheic(
     thEnvir = environment(),

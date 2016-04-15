@@ -1,4 +1,20 @@
 #' @export
+as.xts.thSeries = function(x, POSIXct.origin) {
+  theOrder = as.POSIXct(x$time, origin = POSIXct.origin)
+  x = x[-match("time", names(x))]
+  x = xts(x, order.by = theOrder)
+  return(x)
+}
+
+#' @export
+as.zoo.thSeries = function(x, POSIXct.origin) {
+  theOrder = as.POSIXct(x$time, origin = POSIXct.origin)
+  x = x[-match("time", names(x))]
+  x = zoo(x, order.by = theOrder)
+  return(x)
+}
+
+#' @export
 htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
   myXTS = as.xts.thSeries(myThSeries, POSIXct.origin)
   plot(myXTS$x0, main = "", ylab = "Temperature (degC)", type = 'n', auto.grid = F, minor.ticks = F)
