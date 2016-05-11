@@ -95,7 +95,7 @@ htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
 laggedMSR = function(lag, thSeriesPair, nmin) {
   lData = laggedData(lag, thSeriesPair)
   if(nrow(lData) < nmin) {
-    result = Inf
+    result = -1
   } else {
     fit = laggedModel(lData)
     a=coefficients(fit)
@@ -135,3 +135,4 @@ laggedData = function(lag, thSeriesPair) {
   thSeriesPair <- thSeriesPair[!(is.na(thSeriesPair[,1]) | is.na(thSeriesPair[,2])) ,]
   return(thSeriesPair)
 }
+

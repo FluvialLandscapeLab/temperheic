@@ -197,7 +197,8 @@ thHydro = function(hydCond, dispersivity, headGrad, aq, specificUnits) {
       rep("L2 t-1",3),
       "L",
       "L L-1",
-      rep("L t-1",2)
+      rep("L t-1",2),
+      "L t-1"
     ),
     specificUnits = specificUnits,
     attrs = "aq",
@@ -218,11 +219,16 @@ thSignal = function(aq, hy, bd) {
   thermDecayDist_cond = sqrt(2 * hy$diffusivity_cond / (2 * pi * bd$frequency))
   thermDecayDist_disp = sqrt(2 * hy$diffusivity_disp / (2 * pi * bd$frequency))
   thermDecayDist = sqrt(2 * hy$diffusivity_effective / (2 * pi * bd$frequency))
+  pecletNumber = (hy$advectiveThermVel * thermDecayDist) / hy$diffusivity_cond
+  dispersionDiffusionRatio = hy$diffusivity_disp / hy$diffusivity_cond
+
 
   newSignal = .temperheic(
     thEnvir = environment(),
     thClass = "thSignal",
     generalUnits = c(
+      "L t-1 L t2 L-2",
+      "L2 t-2 t2 L-2",
       rep("L t-1",3),
       rep("L" ,3)
     ),
