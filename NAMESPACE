@@ -2,6 +2,7 @@
 
 S3method(print,temperheic)
 S3method(print,thUnits)
+export(.thSpecificUnits)
 export(as.xts.thSeries)
 export(as.zoo.thSeries)
 export(htPlot)
