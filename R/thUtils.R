@@ -31,9 +31,9 @@ htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
 }
 
 
-
 # Replaces general units (e.g., "E t-1 L-3 T-1") with specific units specified
 # by the user (e.g., "kJ s-1 m-3 degC-1")
+#' @export
 .thSpecificUnits = function(generalUnits, specificUnits = thUnits()) {
   atomicUnits = unlist(lapply(generalUnits, strsplit, split = " "), recursive = F)
 
