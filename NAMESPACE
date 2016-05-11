@@ -2,12 +2,10 @@
 
 S3method(print,temperheic)
 S3method(print,thUnits)
+export(.thSpecificUnits)
 export(as.xts.thSeries)
 export(as.zoo.thSeries)
 export(htPlot)
-export(htPlotXTS)
-export(htPlotZooAnnual)
-export(htPlotZooDaily)
 export(is.thAquifer)
 export(is.thBoundary)
 export(is.thUnits)
