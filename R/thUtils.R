@@ -122,13 +122,13 @@ laggedModel = function(lData) {
 #'@export
 laggedData = function(lag, thSeriesPair) {
   # Create zoo objects
-  thSeriesX = zoo::zoo(thSeriesPair[,2], order.by = thSeriesPair[,1])
-  thSeriesY = zoo::zoo(thSeriesPair[,3], order.by = thSeriesPair[,1])
+  thSeriesX = thSeriesPair[,1]
+  thSeriesY = thSeriesPair[,2]
   zoo::index(thSeriesY) = zoo::index(thSeriesY) - lag
   # Merge series into one object
   storeNames = names(thSeriesPair)
   thSeriesPair <- merge(thSeriesX, thSeriesY)
-  names(thSeriesPair) = storeNames[2:3]
+  names(thSeriesPair) = storeNames
   # Interpolate calibration data (na.spline could also be used)
   thSeriesPair[,2] <- zoo::na.approx(object = thSeriesPair[,2], na.rm = F)
   # Only keep index values from sample data
@@ -136,3 +136,12 @@ laggedData = function(lag, thSeriesPair) {
   return(thSeriesPair)
 }
 
+# converts passed values into 3d array
+derivedArray = function(ampRatio, deltaPhaseRadians, eta, seriesNames) {
+  derivedVals = array(
+    data = c(ampRatio, deltaPhaseRadians, eta),
+    dim = c(length(seriesNames), length(seriesNames), 3),
+    dimnames = list(from = seriesNames, to = seriesNames, value = c("ampRatio", "deltaPhaseRadians", "eta"))
+  )
+  return(derivedVals)
+}
