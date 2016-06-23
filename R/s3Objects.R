@@ -183,7 +183,8 @@ thHydro = function(hydCond, dispersivity, headGrad, aq, specificUnits) {
   if(!identical(specificUnits, attr(aq, "specificUnits"))) stop("The units of the aquifer are not the same as those specificed in 'specificUnits.'")
   darcyFlux = hydCond*headGrad # Darcy velocity L t-1
   velocity_h2o = (darcyFlux / aq$porosity); # Water velocity L t-1
-  advectiveThermVel = darcyFlux * (aq$volHeatCap_h2o / aq$volHeatCap_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
+  # advectiveThermVel = darcyFlux * (aq$volHeatCap_h2o / aq$volHeatCap_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
+  advectiveThermVel = (darcyFlux * aq$density_h2o * aq$spHeat_h2o) / (aq$density_bulk * aq$spHeat_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
 
   diffusivity_cond = aq$thermCond_bulk / aq$volHeatCap_bulk
   diffusivity_disp = (dispersivity * advectiveThermVel)
@@ -219,7 +220,8 @@ thSignal = function(aq, hy, bd) {
   thermDecayDist_cond = sqrt(2 * hy$diffusivity_cond / (2 * pi * bd$frequency))
   thermDecayDist_disp = sqrt(2 * hy$diffusivity_disp / (2 * pi * bd$frequency))
   thermDecayDist = sqrt(2 * hy$diffusivity_effective / (2 * pi * bd$frequency))
-  pecletNumber = (hy$advectiveThermVel * thermDecayDist) / hy$diffusivity_cond
+  #pecletNumber = (hy$advectiveThermVel * thermDecayDist) / hy$diffusivity_cond
+  pecletNumber = (hy$advectiveThermVel * thermDecayDist_cond) / hy$diffusivity_cond
   dispersionDiffusionRatio = hy$diffusivity_disp / hy$diffusivity_cond
 
 
