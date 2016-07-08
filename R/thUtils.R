@@ -81,12 +81,19 @@ htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
 #' of mean squared residuals is based on at least nmin x,y pairs, once the time
 #' lag in y is accounted for.
 #'
-#' \code{laggedMSR()} is desigend to be passed to optimize() in order to find the lag
-#' with the minimum mean squared residuals between time series x and y.
+#' \code{laggedMSR()} is desigend to be passed to optimize() in order to find
+#' the lag with the minimum mean squared residuals between time series x and y.
 #'
 #' @return \code{laggedMSR} Returns the mean squared residuals of a linear model
-#'   (y ~ x) given a time series x and y, assuming thattime series y lags time
-#'   series x by lag time units.
+#'   (y ~ x) given a time series x and y, assuming that time series y lags time
+#'   series x by lag time units.  NOTE: When regressed agains one another, two
+#'   cos waves with a lag of pi radians will yield a mean squared residual of
+#'   zero and a slope of -1.0.  This is an undesirable solution.  The prefered
+#'   solution is a lag of zero, which will yield a MSR of 0 and a slope of 1.0.
+#'   This, in this function, residuals are calculated using the absolute value
+#'   of the regression slope. This ensures that the prefered solution (where low
+#'   MSR is associated with lags that are in phase rather than out of phase) is
+#'   always returned.
 #' @param lag Time that time series y lags time series x.
 #' @param x,y Time series observations as vectors
 #' @param t A vector of times of observations of values in x and y
@@ -98,7 +105,7 @@ laggedMSR = function(lag, thSeriesPair, nmin) {
     result = -1
   } else {
     fit = laggedModel(lData)
-    a=coefficients(fit)
+    a = coefficients(fit)
     result = mean((lData[,2] - (a[1] + abs(a[2]) * lData[,1]))^2)
   }
   return(result)
@@ -145,3 +152,19 @@ derivedArray = function(ampRatio, deltaPhaseRadians, eta, seriesNames) {
   )
   return(derivedVals)
 }
+
+derived2DArray = function(x, seriesNames) {
+  derivedVals = array(
+    data = x,
+    dim = c(length(seriesNames), length(seriesNames)),
+    dimnames = list(from = seriesNames, to = seriesNames)
+  )
+  return(derivedVals)
+}
+
+
+fitCosine = function(observations, period) {
+  return("We need to implement this.")
+}
+
+

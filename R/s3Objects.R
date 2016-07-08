@@ -131,7 +131,21 @@ thBoundary = function(mean, amplitude, phase, period, specificUnits = thUnits())
     ),
     specificUnits = specificUnits
   )
+  class(newBoundary) = c("thSpecifiedBoundary", class(newBoundary))
   return(newBoundary)
+}
+
+# Fit a cos wave to the specified column in the series.  Probably best to use lm
+# rather than nls to avoid issues of initial guesses.  Byron has code for this.
+# NOTE: an observedBoundary object cannot be calculated if we use our "regress
+# one signal against the other" method because this method only calculate
+# ampRatio and phaseLag (not amplitude and phase).  So, interestingly, for a
+# thObservedSeries, the mean, amplitude, and phase of the "boundary" element
+# will be NULL.
+.thObservedBoundary = function(observations, period) {
+  return(fitCosine(obserations, period))
+  # might have to set class or other attributes before returning results of
+  # fitCosine
 }
 
 #' @rdname thAquifer
@@ -177,15 +191,17 @@ thUnits = function(L = "m", M = "kg", t = "s", T = "degC", E = "kJ") {
 }
 
 #' @export
-thHydro = function(hydCond, dispersivity, headGrad, aq, specificUnits) {
+thHydro = function(hydCond, dispersivity, headGrad, aquifer, specificUnits = thUnits()) {
   if(!is.thUnits(specificUnits)) stop("Units must be specified as a 'thUnits' object; call 'thUnits()' to generate such an object.")
-  if(!is.thAquifer(aq)) stop("The 'aquifer' argument must be a thAquifer object; call 'thAquifer()' to generate such an object.")
-  if(!identical(specificUnits, attr(aq, "specificUnits"))) stop("The units of the aquifer are not the same as those specificed in 'specificUnits.'")
-  darcyFlux = hydCond*headGrad # Darcy velocity L t-1
-  velocity_h2o = (darcyFlux / aq$porosity); # Water velocity L t-1
-  advectiveThermVel = darcyFlux * (aq$volHeatCap_h2o / aq$volHeatCap_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
+  if(!is.thAquifer(aquifer)) stop("The 'aquifer' argument must be a thAquifer object; call 'thAquifer()' to generate such an object.")
+  if(!identical(specificUnits, attr(aquifer, "specificUnits"))) stop("The units of the aquifer are not the same as those specificed in 'specificUnits.'")
 
-  diffusivity_cond = aq$thermCond_bulk / aq$volHeatCap_bulk
+  #pull these calucations into fuctions for reuse in thObservedHydro
+  darcyFlux = hydCond*headGrad # Darcy velocity L t-1
+  velocity_h2o = (darcyFlux / aquifer$porosity); # Water velocity L t-1
+  advectiveThermVel = darcyFlux * (aquifer$volHeatCap_h2o / aquifer$volHeatCap_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
+
+  diffusivity_cond = aquifer$thermCond_bulk / aquifer$volHeatCap_bulk
   diffusivity_disp = (dispersivity * advectiveThermVel)
   diffusivity_effective = diffusivity_disp + diffusivity_cond
 
@@ -200,28 +216,32 @@ thHydro = function(hydCond, dispersivity, headGrad, aq, specificUnits) {
       rep("L t-1",2),
       "L t-1"
     ),
-    specificUnits = specificUnits,
-    attrs = "aq",
-    attrNames = "aquifer"
+    specificUnits = specificUnits
   )
+  class(newHydro) = c("thSpecifiedHydro", class(newHydro))
   return(newHydro)
 
 }
 
+.thObservedHydro = function(series, headGrad, aquifer) {
+  return("We need to implement this.")
+}
+
 #' @export
-thSignal = function(aq, hy, bd) {
-## TO DO:  TEST TO BE SURE UNITS ARE ALL IDENTICAL!
-  ##  if(!allIdentical(ALL THE UNITS))
-  phaseVel_cond = sqrt(2 * hy$diffusivity_cond * 2 * pi * bd$frequency)
-  phaseVel_disp = sqrt(2 * hy$diffusivity_disp * 2 * pi * bd$frequency)
-  phaseVel = sqrt(2 * hy$diffusivity_effective * 2 * pi * bd$frequency)
+thSignal = function(hydro, boundary) {
+  if((!identical(attr(hydro, "specificUnits"), attr(boundary, "specificUnits")))) stop("specificUnits attribute of the thAquifer, thHydro, and thBoundary must be identical.")
 
-  thermDecayDist_cond = sqrt(2 * hy$diffusivity_cond / (2 * pi * bd$frequency))
-  thermDecayDist_disp = sqrt(2 * hy$diffusivity_disp / (2 * pi * bd$frequency))
-  thermDecayDist = sqrt(2 * hy$diffusivity_effective / (2 * pi * bd$frequency))
-  pecletNumber = (hy$advectiveThermVel * thermDecayDist) / hy$diffusivity_cond
-  dispersionDiffusionRatio = hy$diffusivity_disp / hy$diffusivity_cond
+  ## ideally, pull these calculations into functions to avoid "cut/paste" antipattern
+  phaseVel_cond = sqrt(2 * hydro$diffusivity_cond * 2 * pi * boundary$frequency)
+  phaseVel_disp = sqrt(2 * hydro$diffusivity_disp * 2 * pi * boundary$frequency)
+  phaseVel = sqrt(2 * hydro$diffusivity_effective * 2 * pi * boundary$frequency)
 
+  thermDecayDist_cond = sqrt(2 * hydro$diffusivity_cond / (2 * pi * boundary$frequency))
+  thermDecayDist_disp = sqrt(2 * hydro$diffusivity_disp / (2 * pi * boundary$frequency))
+  thermDecayDist = sqrt(2 * hydro$diffusivity_effective / (2 * pi * boundary$frequency))
+  pecletNumber = (hydro$advectiveThermVel * thermDecayDist) / hydro$diffusivity_cond
+  dispersionDiffusionRatio = hydro$diffusivity_disp / hydro$diffusivity_cond
+  specificUnits = attr(hydro$aquifer, "specificUnits")
 
   newSignal = .temperheic(
     thEnvir = environment(),
@@ -232,16 +252,34 @@ thSignal = function(aq, hy, bd) {
       rep("L t-1",3),
       rep("L" ,3)
     ),
-    specificUnits = attr(aq, "specificUnits"),
-    attrs = c("aq", "hy", "bd"),
-    attrNames = c("aquifer", "hydro", "boundary")
+    specificUnits = specificUnits
   )
   return(newSignal)
 
 }
 
+.thObservedSignal = function(observedHydro, observedBoundary) {
+  return("Need to implement this.")
+  # call thSignal and then simply add the class "thObservedSignal" before returning.
+}
+
+#' creates a thObject from the variables in the environment passed to the
+#' function.
+#' @param thEnvir The environment to be searched for variables
+#' @param thClass The class of the object to be create; also the name of the
+#'   constructor function for the class
+#' @param generalUnits A vector of general units (that uses the names from a
+#'   specificUnits object) to describe the units of for each numeric value.
+#' @param specificUnits A specificUnits object telling what specificUnits the
+#'   values are in.
+#' @param attr A character vector with the names of the variables in thEnvir
+#'   that should be attached as attributes rather than being elements of the
+#'   thObject
+#' @param attrNames The attribute names to be used for the variables specifiec
+#'   by attr.
 .temperheic = function(thEnvir, thClass, generalUnits, specificUnits, attrs = NULL, attrNames = attrs) {
-  attrs = c(attrs)
+  attrNames = c(attrNames, "specificUnits", "thObjectNames")
+  attrs = c(attrs, as.character(as.list(match.call())$specificUnits), "thObjects")
   if(!is.thUnits(specificUnits)) stop("Units must be specified as a 'thUnits' object; call 'thUnits()' to generate such an object.")
   elementNames = ls(envir = thEnvir)
   elementNames = elementNames[!(elementNames %in% attrs)]
@@ -249,15 +287,16 @@ thSignal = function(aq, hy, bd) {
     sapply(elementNames, function(x) get(x, envir = thEnvir), simplify = F),
     class = c(thClass, "temperheic"),
     units = .thSpecificUnits(generalUnits, specificUnits),
-    derivedValues = elementNames[!elementNames %in% names(formals(thClass))]
+    derivedValueNames = elementNames[!elementNames %in% names(formals(thClass))]
   )
-  if(!is.null(attrs)) {
+  assign("thObjects", names(newTemperheic)[sapply(newTemperheic, is.temperheic)], envir = thEnvir)
+#  if(!is.null(attrs)) {
     attributeList = sapply(attrs, function(x) get(x, envir = thEnvir), simplify = F)
     for (i in 1:length(attributeList)) {
       attr(newTemperheic, attrNames[i]) = attributeList[[i]]
     }
-  }
-  attr(newTemperheic, "specificUnits") = specificUnits
+#  }
+#  attr(newTemperheic, "specificUnits") = specificUnits
   return(newTemperheic)
 }
 
@@ -265,7 +304,9 @@ thSignal = function(aq, hy, bd) {
 print.temperheic = function(x, ...) {
   # star = c("", "*")
   # starVector = star[as.integer(names(x) %in% attributes(x)[["derivedValues"]])+1]
-  derivedNames = attributes(x)[["derivedValues"]]
+  isThObject = sapply(x, is.temperheic)
+  x[isThObject] = NULL
+  derivedNames = attributes(x)[["derivedValueNames"]]
   title = c("User-specified values:\n", "Derived values:\n")
   inDerived = c(FALSE, TRUE)
   for (i in 1:2) {
@@ -275,12 +316,22 @@ print.temperheic = function(x, ...) {
       cat(paste0("  ", names(x[printEm]), " = ", x[printEm], " (", attributes(x)[["units"]][printEm], ")\n"), sep="")
     }
   }
-  cat("Additional attributes:", paste0(names(attributes(x)), collapse = ", "))
+  if(length(attr(x, "thObjectNames")) > 0) {
+    cat("thObjects:", paste0(attr(x, "thObjectNames"), collapse = ", "), "\n")
+  }
+  cat("Attributes:", paste0(names(attributes(x)), collapse = ", "))
 }
 
 #' @export
 print.thUnits = function(x, ...) {
   cat(paste0(names(x), " = '", x, "'", collapse = "; "))
+}
+
+# CONSIDER ADDING "is" FUNCTIONS FOR "observed" AND "specified" CHILD CLASSES.
+
+#' @export
+is.temperheic = function(x) {
+  return(is(x, "temperheic"))
 }
 
 #' @export
@@ -297,3 +348,14 @@ is.thAquifer = function(x) {
 is.thBoundary = function(x) {
   return(is(x, "thBoundary"))
 }
+
+#' @export
+is.thHydro = function(x) {
+  return(is(x, "thHydro"))
+}
+
+#' @export
+is.thSignal = function(x) {
+  return(is(x, "thSignal"))
+}
+
