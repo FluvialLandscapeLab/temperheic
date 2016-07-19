@@ -197,12 +197,13 @@ thHydro = function(hydCond, dispersivity, headGrad, aquifer, specificUnits = thU
   if(!identical(specificUnits, attr(aquifer, "specificUnits"))) stop("The units of the aquifer are not the same as those specificed in 'specificUnits.'")
 
   #pull these calucations into fuctions for reuse in thObservedHydro
-  darcyFlux = hydCond*headGrad # Darcy velocity L t-1
+  darcyFlux = hydCond * headGrad # Darcy velocity L t-1
   velocity_h2o = (darcyFlux / aquifer$porosity); # Water velocity L t-1
-  advectiveThermVel = darcyFlux * (aquifer$volHeatCap_h2o / aquifer$volHeatCap_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
-
-  diffusivity_cond = aquifer$thermCond_bulk / aquifer$volHeatCap_bulk
-  diffusivity_disp = (dispersivity * advectiveThermVel)
+  #advectiveThermVel = darcyFlux * (aquifer$volHeatCap_h2o / aquifer$volHeatCap_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
+  advectiveThermVel = darcyFlux * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o))
+  #diffusivity_cond = aquifer$thermCond_bulk / aquifer$volHeatCap_bulk
+  diffusivity_cond = aquifer$thermCond_bulk / (aquifer$density_bulk * aquifer$spHeat_bulk)
+  diffusivity_disp = dispersivity * darcyFlux * ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
   diffusivity_effective = diffusivity_disp + diffusivity_cond
 
   newHydro = .temperheic(

@@ -9,7 +9,7 @@
 
 #'@rdname thSeries
 #'@export
-thObservedSeries = function(empiricalData, xVals, period, aquifer, nmin, optimizeRange = c(-period/8, period*7/8), specificUnits = thUnits()) {
+thObservedSeries = function(empiricalData, xVals, period, aquifer, hydro, nmin, freq = (2*pi)/period ,optimizeRange = c(-period/8, period*7/8), specificUnits = thUnits()) {
   if(!identical(specificUnits, attr(aquifer, "specificUnits"))) stop("specificUnits of aquifer is not equal to specificUnits of empirical data (passed as 'specifiUnits' argument).")
 
   if(!inherits(empiricalData, "zoo")) stop("empiricalData must be a zoo object.")
@@ -62,9 +62,23 @@ thObservedSeries = function(empiricalData, xVals, period, aquifer, nmin, optimiz
   eta = -log(ampRatio)/deltaPhaseRadians
   eta[diagnalLocs] = NaN
 
+  factorialDists = expand.grid(from = names(empiricalData), to = names(empiricalData))
+  names(xVals) = names(empiricalData)
+  deltaXvals = derived2DArray(xVals[factorialDists$to] - xVals[factorialDists$from], names(empiricalData))
   ampRatio = derived2DArray(ampRatio, names(empiricalData))
   deltaPhaseRadians = derived2DArray(deltaPhaseRadians, names(empiricalData))
   eta = derived2DArray(eta, names(empiricalData))
+
+  advectiveThermVelocity = ((freq * deltaXvals) * (1 - eta^2) ) / (sqrt(log(ampRatio)^2 + deltaPhaseRadians^2) * sqrt(1 + eta^2))
+
+  effectiveDiffusivityEmpirical = (eta * freq * deltaXvals^2) /  ((log(ampRatio)^2) + deltaPhaseRadians^2)
+
+  darcyFlux = advectiveThermVelocity * ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
+
+  dispersivity = ((effectiveDiffusivityEmpirical * aquifer$spHeat_bulk * aquifer$density_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o * darcyFlux)) - (aquifer$thermCond_bulk / (aquifer$density_h2o * aquifer$spHeat_h2o * darcyFlux))
+
+  hydraulicCond = darcyFlux / hydro$headGrad
+
   # derivedVals = derivedArray(ampRatio, deltaPhaseRadians, eta, names(empiricalData))
 
   # remove anything you don't want as an element of the thObservedSeries
