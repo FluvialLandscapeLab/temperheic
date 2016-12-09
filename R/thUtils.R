@@ -95,7 +95,7 @@ htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
 #'   MSR is associated with lags that are in phase rather than out of phase) is
 #'   always returned.
 #' @param lag Time that time series y lags time series x.
-#' @param x,y Time series observations as vectors
+#' @param thSeriesPair Zoo object with two columns -- the starting sine wave and ending sine wave
 #' @param t A vector of times of observations of values in x and y
 #' @param nmin Minimum number of x.y pairs desired (see Details)
 #' @export

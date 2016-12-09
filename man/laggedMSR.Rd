@@ -15,11 +15,11 @@ laggedData(lag, thSeriesPair)
 \arguments{
 \item{lag}{Time that time series y lags time series x.}
 
+\item{thSeriesPair}{Zoo object with two columns -- the starting sine wave and ending sine wave}
+
 \item{nmin}{Minimum number of x.y pairs desired (see Details)}
 
 \item{lData}{A zoo object, typcally returned by calling \code{laggedData()}}
-
-\item{x, y}{Time series observations as vectors}
 
 \item{t}{A vector of times of observations of values in x and y}
 }

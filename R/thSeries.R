@@ -9,7 +9,8 @@
 
 #'@rdname thSeries
 #'@export
-thObservedSeries = function(empiricalData, xVals, period, aquifer, hydro, nmin, freq = (2*pi)/period ,optimizeRange = c(-period/8, period*7/8), specificUnits = thUnits()) {
+thObservedSeries = function(empiricalData, xVals, period, aquifer, hydro, nmin, freq = (2*pi)/period, optimizeRange = c(-period/8, period*7/8), specificUnits = thUnits()) {
+  # freq = (2*pi)/period
   if(!identical(specificUnits, attr(aquifer, "specificUnits"))) stop("specificUnits of aquifer is not equal to specificUnits of empirical data (passed as 'specifiUnits' argument).")
 
   if(!inherits(empiricalData, "zoo")) stop("empiricalData must be a zoo object.")
@@ -35,8 +36,9 @@ thObservedSeries = function(empiricalData, xVals, period, aquifer, hydro, nmin, 
         if(row %in% diagnalLocs) {
           result = list(minimum = 0, objective = 0)
         } else {
-          results = optimize(f = laggedMSR, optimizeRange, thSeriesPair = empiricalData[,as.character(combos[row,])], nmin)
+          result = optimize(f = laggedMSR, interval = optimizeRange, thSeriesPair = empiricalData[,as.character(combos[row,])], nmin = nmin)
         }
+        return(result)
       }
     )
     )
@@ -58,7 +60,7 @@ thObservedSeries = function(empiricalData, xVals, period, aquifer, hydro, nmin, 
       return(result)
     }
   )
-
+## ampRatio, deltaPhaseRadians, diagnalLocs, empiricalData, xVals, freq
   eta = -log(ampRatio)/deltaPhaseRadians
   eta[diagnalLocs] = NaN
 
@@ -69,13 +71,19 @@ thObservedSeries = function(empiricalData, xVals, period, aquifer, hydro, nmin, 
   deltaPhaseRadians = derived2DArray(deltaPhaseRadians, names(empiricalData))
   eta = derived2DArray(eta, names(empiricalData))
 
-  advectiveThermVelocity = ((freq * deltaXvals) * (1 - eta^2) ) / (sqrt(log(ampRatio)^2 + deltaPhaseRadians^2) * sqrt(1 + eta^2))
+  advectiveThermVelocity = ((freq * deltaXvals) / (sqrt((log(ampRatio)^2) + deltaPhaseRadians^2))) * ((1 - eta^2) / sqrt(1 + eta^2))
 
-  effectiveDiffusivityEmpirical = (eta * freq * deltaXvals^2) /  ((log(ampRatio)^2) + deltaPhaseRadians^2)
+  effectiveDiffusivityEmpirical = (eta * freq * deltaXvals^2) / ((log(ampRatio)^2) + deltaPhaseRadians^2)
 
-  darcyFlux = advectiveThermVelocity * ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
+  darcyFlux = advectiveThermVelocity * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o) )
 
-  dispersivity = ((effectiveDiffusivityEmpirical * aquifer$spHeat_bulk * aquifer$density_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o * darcyFlux)) - (aquifer$thermCond_bulk / (aquifer$density_h2o * aquifer$spHeat_h2o * darcyFlux))
+  waterVelocity = darcyFlux / aquifer$porosity
+
+  # dispersivity = ((effectiveDiffusivityEmpirical * aquifer$spHeat_bulk * aquifer$density_bulk) / (aquifer$density_bulk * aquifer$spHeat_bulk * darcyFlux)) - (aquifer$thermCond_bulk / (aquifer$density_h2o * aquifer$spHeat_h2o * darcyFlux))
+
+  #dispersivity = ((effectiveDiffusivityEmpirical * aquifer$spHeat_bulk * aquifer$density_bulk) - aquifer$thermCond_bulk) / (aquifer$density_bulk * aquifer$spHeat_bulk * waterVelocity)
+
+  dispersivity = (waterVelocity^-1) *(effectiveDiffusivityEmpirical  - (aquifer$thermCond_bulk / (aquifer$density_bulk * aquifer$spHeat_bulk)))
 
   hydraulicCond = darcyFlux / hydro$headGrad
 

@@ -120,6 +120,7 @@ thAquifer = function (porosity, thermCond_sed, thermCond_h2o, spHeat_sed, spHeat
 #' @export
 thBoundary = function(mean, amplitude, phase, period, specificUnits = thUnits()) {
   frequency = 1/period
+  #frequency = (2*pi)/period
   newBoundary = .temperheic(
     thEnvir = environment(),
     thClass = "thBoundary",
@@ -200,10 +201,11 @@ thHydro = function(hydCond, dispersivity, headGrad, aquifer, specificUnits = thU
   darcyFlux = hydCond * headGrad # Darcy velocity L t-1
   velocity_h2o = (darcyFlux / aquifer$porosity); # Water velocity L t-1
   #advectiveThermVel = darcyFlux * (aquifer$volHeatCap_h2o / aquifer$volHeatCap_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
-  advectiveThermVel = darcyFlux * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o))
+  #advectiveThermVel = darcyFlux * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o))
+  advectiveThermVel = darcyFlux *  ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
   #diffusivity_cond = aquifer$thermCond_bulk / aquifer$volHeatCap_bulk
   diffusivity_cond = aquifer$thermCond_bulk / (aquifer$density_bulk * aquifer$spHeat_bulk)
-  diffusivity_disp = dispersivity * darcyFlux * ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
+  diffusivity_disp = dispersivity * velocity_h2o #* ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
   diffusivity_effective = diffusivity_disp + diffusivity_cond
 
   newHydro = .temperheic(
@@ -240,7 +242,7 @@ thSignal = function(hydro, boundary) {
   thermDecayDist_cond = sqrt(2 * hydro$diffusivity_cond / (2 * pi * boundary$frequency))
   thermDecayDist_disp = sqrt(2 * hydro$diffusivity_disp / (2 * pi * boundary$frequency))
   thermDecayDist = sqrt(2 * hydro$diffusivity_effective / (2 * pi * boundary$frequency))
-  pecletNumber = (hydro$advectiveThermVel * thermDecayDist) / hydro$diffusivity_cond
+  pecletNumber = (hydro$advectiveThermVel * thermDecayDist_cond) / hydro$diffusivity_cond
   dispersionDiffusionRatio = hydro$diffusivity_disp / hydro$diffusivity_cond
   specificUnits = attr(hydro$aquifer, "specificUnits")
 
