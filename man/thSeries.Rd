@@ -5,9 +5,9 @@
 \alias{thSeries}
 \title{Create thSeries and thObservation Objects.}
 \usage{
-thObservedSeries(empiricalData, xVals, period, aquifer, hydro, nmin, freq = (2
-  * pi)/period, optimizeRange = c(-period/8, period * 7/8),
-  specificUnits = thUnits())
+thObservedSeries(empiricalData, xVals, aquifer, period, headGrad, nmin,
+  freq = (2 * pi)/period, optimizeRange = c(-1/8, 7/8),
+  specificUnits = thUnits(), laggedLinearFit = T)
 
 thSeries(signal, xVals, tVals, specificUnits)
 }

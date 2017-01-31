@@ -1,96 +1,57 @@
-# myObservations = zoo(
-#   data.frame(
-#     x0 = cos(seq(0, 6*pi, 0.1))*5 + 12,
-#     x10 = cos(seq(-1, 6*pi-1, 0.1))*2.5 + 12,
-#     x30 = cos(seq(-3, 6*pi-3, 0.1))*1.25 + 12
-#     ),
-#   order.by = seq(0, 6*pi, 0.1)*365*86400/(2*pi)
-# )
 
 #'@rdname thSeries
 #'@export
-thObservedSeries = function(empiricalData, xVals, period, aquifer, hydro, nmin, freq = (2*pi)/period, optimizeRange = c(-period/8, period*7/8), specificUnits = thUnits()) {
-  # freq = (2*pi)/period
+thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmin, freq = (2*pi)/period, optimizeRange = c(-1/8, 7/8), specificUnits = thUnits(), laggedLinearFit = T) {
+
+  if((optimizeRange[2] - optimizeRange[1]) != 1) stop("max optimize range - min optimize range must = 1.0")
+  if(!inherits(empiricalData, "zoo")) stop("EmpiricalData must be a zoo object")
+  # Check to be sure that empiricalData column names are the same as the names of xVals.
+  if(!identical(sort(names(empiricalData)), sort(names(xVals)))) stop("The names of the columns in empirical data must match the names of xvals.")
+  # Ensure that xVals are in ascending order.
+  xVals = xVals[order(xVals)]
+  if(!xVals[1] == 0) stop("xVals must include zero to designate input signal.")
+  # Reorder empiricalData columns to match xVals.
+  empiricalData = empiricalData[,names(xVals)]
+
   if(!identical(specificUnits, attr(aquifer, "specificUnits"))) stop("specificUnits of aquifer is not equal to specificUnits of empirical data (passed as 'specifiUnits' argument).")
 
   if(!inherits(empiricalData, "zoo")) stop("empiricalData must be a zoo object.")
-#  if(length(xVals) != ncol(empiricalData)) stop("Please specify one distance for each column on the empiricalData.")
-#  if(!identical(names(empiricalData), paste0("x", xVals))) stop("The names of the columns in empirical data must be: ", paste0(paste0("x", xVals), collapse = ", "))
-  nSeries = ncol(empiricalData)
+  if(length(xVals) != ncol(empiricalData)) stop("Please specify one distance for each column on the empiricalData.")
 
   # some vectors are calculated later on.  These vectors will be converted to
   # matricies that are ncol = nSeries, nrow = nSeries.  The following line of
   # code calculates the vector locations of the matrix diagnal -- where well
   # data is compared to itself
+  nSeries = ncol(empiricalData)
   diagnalLocs = (0:(nSeries-1))*nSeries + 1:nSeries
 
-  combos = expand.grid(from = names(empiricalData), to = names(empiricalData), stringsAsFactors = F)
-  #combos = combos[combos$from < combos$to,]
-  #combos = data.frame(apply(combos, 2, function(.x) paste0("x", .x)), stringsAsFactors = F)
-
-  # calculate phases using phase shifting approach
-  dphase = t(
-    sapply(
-      1:nrow(combos),
-      function(row) {
-        if(row %in% diagnalLocs) {
-          result = list(minimum = 0, objective = 0)
-        } else {
-          result = optimize(f = laggedMSR, interval = optimizeRange, thSeriesPair = empiricalData[,as.character(combos[row,])], nmin = nmin)
-        }
-        return(result)
-      }
-    )
-    )
-
-  dphase[dphase[,"objective"] < 0,"minimum"] = NA
-  dphase = unlist(dphase[,"minimum"])
-  deltaPhaseRadians = dphase*2*pi/period
-
-  ampRatio = sapply(
-    1:nrow(combos),
-    function(rowIndex) {
-      if(is.na(dphase[rowIndex])) {
-        result = NA
-      } else {
-        result = laggedData(dphase[rowIndex], empiricalData[,as.character(combos[rowIndex,])])
-        result = laggedModel(result)
-        result = coefficients(result)[2]
-      }
-      return(result)
-    }
-  )
-## ampRatio, deltaPhaseRadians, diagnalLocs, empiricalData, xVals, freq
-  eta = -log(ampRatio)/deltaPhaseRadians
+  if(laggedLinearFit) {
+    results <- lagLinFit(empiricalData, period, optimizeRange, nmin)
+  } else {
+    results <- fitCosine(empiricalData, period, optimizeRange, nmin)
+  }
+  ## ampRatio, deltaPhaseRadians, diagnalLocs, empiricalData, xVals, freq
+  eta = -log(results$ampRatio)/results$deltaPhaseRadians
   eta[diagnalLocs] = NaN
 
   factorialDists = expand.grid(from = names(empiricalData), to = names(empiricalData))
   names(xVals) = names(empiricalData)
   deltaXvals = derived2DArray(xVals[factorialDists$to] - xVals[factorialDists$from], names(empiricalData))
-  ampRatio = derived2DArray(ampRatio, names(empiricalData))
-  deltaPhaseRadians = derived2DArray(deltaPhaseRadians, names(empiricalData))
+  ampRatio = derived2DArray(results$ampRatio, names(empiricalData))
+  deltaPhaseRadians = derived2DArray(results$deltaPhaseRadians, names(empiricalData))
   eta = derived2DArray(eta, names(empiricalData))
 
-  advectiveThermVelocity = ((freq * deltaXvals) / (sqrt((log(ampRatio)^2) + deltaPhaseRadians^2))) * ((1 - eta^2) / sqrt(1 + eta^2))
+  advectiveThermVelEmpirical = ((freq * deltaXvals) / (sqrt((log(ampRatio)^2) + deltaPhaseRadians^2))) * ((1 - eta^2) / sqrt(1 + eta^2))
 
-  effectiveDiffusivityEmpirical = (eta * freq * deltaXvals^2) / ((log(ampRatio)^2) + deltaPhaseRadians^2)
+  diffusivity_effective_empirical = (eta * freq * deltaXvals^2) / ((log(ampRatio)^2) + deltaPhaseRadians^2)
 
-  darcyFlux = advectiveThermVelocity * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o) )
+  darcyFlux = advectiveThermVelEmpirical * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o) )
 
-  waterVelocity = darcyFlux / aquifer$porosity
+  velocity_h2o = darcyFlux / aquifer$porosity
 
-  # dispersivity = ((effectiveDiffusivityEmpirical * aquifer$spHeat_bulk * aquifer$density_bulk) / (aquifer$density_bulk * aquifer$spHeat_bulk * darcyFlux)) - (aquifer$thermCond_bulk / (aquifer$density_h2o * aquifer$spHeat_h2o * darcyFlux))
+  dispersivity = ((diffusivity_effective_empirical * aquifer$density_bulk * aquifer$spHeat_bulk) - aquifer$thermCond_bulk)  / (advectiveThermVelEmpirical * aquifer$density_bulk * aquifer$spHeat_bulk)
 
-  #dispersivity = ((effectiveDiffusivityEmpirical * aquifer$spHeat_bulk * aquifer$density_bulk) - aquifer$thermCond_bulk) / (aquifer$density_bulk * aquifer$spHeat_bulk * waterVelocity)
-
-  dispersivity = (waterVelocity^-1) *(effectiveDiffusivityEmpirical  - (aquifer$thermCond_bulk / (aquifer$density_bulk * aquifer$spHeat_bulk)))
-
-  hydraulicCond = darcyFlux / hydro$headGrad
-
-  # derivedVals = derivedArray(ampRatio, deltaPhaseRadians, eta, names(empiricalData))
-
-  # remove anything you don't want as an element of the thObservedSeries
-  rm(nSeries, dphase, combos, diagnalLocs)
+  hydraulicCond = darcyFlux / headGrad
 
   newObservedSeries = .temperheic(
     thEnvir = environment(),
@@ -128,14 +89,15 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
   # variable in eqn 8, Luce et al 2013
   a = (1 / (2 * signal$hydro$diffusivity_effective)) * (sqrt(((sqrt((signal$hydro$advectiveThermVel^4) + (4 * 2 * pi * signal$boundary$frequency * signal$hydro$diffusivity_effective)^2) + signal$hydro$advectiveThermVel^2)/2)) - signal$hydro$advectiveThermVel)
   b = (1 / (2 * signal$hydro$diffusivity_effective)) * sqrt(((sqrt((signal$hydro$advectiveThermVel^4) + (4 * 2 * pi * signal$boundary$frequency * signal$hydro$diffusivity_effective)^2) - signal$hydro$advectiveThermVel^2)/2))
+  # a <- 1/signal$thermDecayDist
+  # b <- (1/signal$phaseVel) #* ((2*pi)/(1/signal$boundary$frequency))
 
-  #a = a * ayeScale
-  #b = b * beeScale
-
+  zdAdvective = 1/a
+  vdAdvective = 1 / (b*(signal$boundary$period)/(2*pi))
   # create the individual time series from the vector of xVals ("well locations") specified by the user.
 
   timeSeries =
-    zoo(
+    zoo::zoo(
       do.call(
         data.frame,
         args =
@@ -145,10 +107,26 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
               function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-a * x) * cos((2 * pi / signal$boundary$period) * tVals - (b * x) - (2 * pi * signal$boundary$phase / signal$boundary$period))
             )
           )
-        ),
+      ),
       order.by = tVals
-      )
+    )
   names(timeSeries) = paste0("x", xVals)
+
+    # timeSeries =
+    #   zoo::zoo(
+    #     do.call(
+    #       data.frame,
+    #       args =
+    #         c(
+    #           lapply(
+    #             xVals,
+    #             function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-x/signal$thermDecayDist) * cos((2 * pi / signal$boundary$period) * (tVals - signal$boundary$phase) - (x/signal$thermDecayDist))
+    #           )
+    #         )
+    #     ),
+    #     order.by = tVals
+    #   )
+    # names(timeSeries) = paste0("x", xVals)
 
   # create a vector of amplitude values -- one for each xVal ("well location")
   amplitude =
@@ -178,25 +156,25 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
 
   names(xVals) = names(timeSeries)
   deltaXvals = derived2DArray(xVals[factorialDists$to] - xVals[factorialDists$from], names(timeSeries))
-#   diffusivity_effectiveEmp = (eta * (2*pi / signal$boundary$period) * deltaXvals^2) / (log(ampRatio)^2 + deltaPhaseRadians^2)
-#   advectiveThermVelEmp = (((2*pi / signal$boundary$period) * deltaXvals) / sqrt((log(ampRatio)^2 + deltaPhaseRadians^2))) * ((1 - eta^2) / sqrt(1 + eta^2))
+  #   diffusivity_effectiveEmp = (eta * (2*pi / signal$boundary$period) * deltaXvals^2) / (log(ampRatio)^2 + deltaPhaseRadians^2)
+  #   advectiveThermVelEmp = (((2*pi / signal$boundary$period) * deltaXvals) / sqrt((log(ampRatio)^2 + deltaPhaseRadians^2))) * ((1 - eta^2) / sqrt(1 + eta^2))
 
-#  derivedVals = derivedArray(ampRatio, deltaPhaseRadians, eta, names(seriesList))
-#   empiricalVals = array(
-#     data = c(diffusivity_effectiveEmp, advectiveThermVelEmp),
-#     dim = c(length(xVals), length(xVals), 2),
-#     dimnames = list(from = names(seriesList), to = names(seriesList), value = c("diffusivity_effectiveEmp", "advectiveThermVelEmp"))
-#   )
+  #  derivedVals = derivedArray(ampRatio, deltaPhaseRadians, eta, names(seriesList))
+  #   empiricalVals = array(
+  #     data = c(diffusivity_effectiveEmp, advectiveThermVelEmp),
+  #     dim = c(length(xVals), length(xVals), 2),
+  #     dimnames = list(from = names(seriesList), to = names(seriesList), value = c("diffusivity_effectiveEmp", "advectiveThermVelEmp"))
+  #   )
 
-#   myZoo = structure(
-#     zoo(do.call(data.frame, args = c(seriesList)), order.by = tVals),
-#     signal = signal,
-#     phaseRadians = phaseRadians,
-#     amplitude = amplitude,
-#     derivedVals = derivedVals
-#     # empiricalVals = empiricalVals,
-#   )
-#   class(myZoo) = c("thSeries", "thObservations", "temporheic", class(myZoo))
+  #   myZoo = structure(
+  #     zoo(do.call(data.frame, args = c(seriesList)), order.by = tVals),
+  #     signal = signal,
+  #     phaseRadians = phaseRadians,
+  #     amplitude = amplitude,
+  #     derivedVals = derivedVals
+  #     # empiricalVals = empiricalVals,
+  #   )
+  #   class(myZoo) = c("thSeries", "thObservations", "temporheic", class(myZoo))
 
   #get rid of a few variables we don't want in the thSeries object.
   rm(a,b, tVals, factorialDists)
