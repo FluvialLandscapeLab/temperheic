@@ -31,7 +31,7 @@ thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmi
     results <- fitCosine(empiricalData, period, optimizeRange, nmin)
   }
   ## ampRatio, deltaPhaseRadians, diagnalLocs, empiricalData, xVals, freq
-  eta = -log(results$ampRatio)/results$deltaPhaseRadians
+  eta = -log(results$ampRatio)/results$deltaPhaseRadians  # See Luce et al. 2013
   eta[diagnalLocs] = NaN
 
   factorialDists = expand.grid(from = names(empiricalData), to = names(empiricalData))
@@ -41,8 +41,9 @@ thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmi
   deltaPhaseRadians = derived2DArray(results$deltaPhaseRadians, names(empiricalData))
   eta = derived2DArray(eta, names(empiricalData))
 
+  # See Luce et al. 2013 equation #60
   advectiveThermVelEmpirical = ((freq * deltaXvals) / (sqrt((log(ampRatio)^2) + deltaPhaseRadians^2))) * ((1 - eta^2) / sqrt(1 + eta^2))
-
+  # See Luce et al. 2013 equation #59
   diffusivity_effective_empirical = (eta * freq * deltaXvals^2) / ((log(ampRatio)^2) + deltaPhaseRadians^2)
 
   darcyFlux = advectiveThermVelEmpirical * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o) )
@@ -66,17 +67,6 @@ thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmi
 }
 
 
-#   myZoo = structure(
-#     empiricalData,
-# #    phaseRadians = phaseRadians,
-# #    amplitude = amplitude,
-#     derivedVals = derivedVals
-#     # empiricalVals = empiricalVals,
-#   )
-#   class(myZoo) = c("thObservations", class(myZoo))
-#
-#   return(myZoo)
-# }
 
 #' Create thSeries and thObservation Objects.
 #'
@@ -87,13 +77,18 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
   if(!identical(attr(signal, "specificUnits"), specificUnits)) stop ("The units of the signal are not the same as those specified in specificUnits.")
 
   # variable in eqn 8, Luce et al 2013
-  a = (1 / (2 * signal$hydro$diffusivity_effective)) * (sqrt(((sqrt((signal$hydro$advectiveThermVel^4) + (4 * 2 * pi * signal$boundary$frequency * signal$hydro$diffusivity_effective)^2) + signal$hydro$advectiveThermVel^2)/2)) - signal$hydro$advectiveThermVel)
-  b = (1 / (2 * signal$hydro$diffusivity_effective)) * sqrt(((sqrt((signal$hydro$advectiveThermVel^4) + (4 * 2 * pi * signal$boundary$frequency * signal$hydro$diffusivity_effective)^2) - signal$hydro$advectiveThermVel^2)/2))
-  # a <- 1/signal$thermDecayDist
-  # b <- (1/signal$phaseVel) #* ((2*pi)/(1/signal$boundary$frequency))
+  #a = (1 / (2 * signal$hydro$diffusivity_effective)) * (sqrt(((sqrt((signal$hydro$advectiveThermVel^4) + (4 * 2 * pi * signal$boundary$frequency * signal$hydro$diffusivity_effective)^2) + signal$hydro$advectiveThermVel^2)/2)) - signal$hydro$advectiveThermVel)
+  #b = (1 / (2 * signal$hydro$diffusivity_effective)) * sqrt(((sqrt((signal$hydro$advectiveThermVel^4) + (4 * 2 * pi * signal$boundary$frequency * signal$hydro$diffusivity_effective)^2) - signal$hydro$advectiveThermVel^2)/2))
+  # zdAdvective2 = 1/a
+  # vdAdvective2 = 1 / (b*(signal$boundary$period)/(2*pi))
 
-  zdAdvective = 1/a
-  vdAdvective = 1 / (b*(signal$boundary$period)/(2*pi))
+  # after Vogt 2014; i.e. c
+  num1 <- 64*(pi^2)*(signal$boundary$frequency^2)*(signal$hydro$diffusivity_effective^2)
+  rad1 <- (1 + (num1/(signal$hydro$advectiveThermVel^4)))^0.5
+  rad2 <- (0.5 + (0.5*rad1))^0.5
+  vdAdvective <- signal$hydro$advectiveThermVel * rad2
+  zdAdvective <- (2*signal$hydro$diffusivity_effective)/(vdAdvective-signal$hydro$advectiveThermVel)
+
   # create the individual time series from the vector of xVals ("well locations") specified by the user.
 
   timeSeries =
@@ -104,7 +99,7 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
           c(
             lapply(
               xVals,
-              function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-a * x) * cos((2 * pi / signal$boundary$period) * tVals - (b * x) - (2 * pi * signal$boundary$phase / signal$boundary$period))
+              function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-x/zdAdvective) * cos((2 * pi / signal$boundary$period) * (tVals - signal$boundary$phase - (x/vdAdvective)))
             )
           )
       ),
@@ -112,27 +107,12 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
     )
   names(timeSeries) = paste0("x", xVals)
 
-    # timeSeries =
-    #   zoo::zoo(
-    #     do.call(
-    #       data.frame,
-    #       args =
-    #         c(
-    #           lapply(
-    #             xVals,
-    #             function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-x/signal$thermDecayDist) * cos((2 * pi / signal$boundary$period) * (tVals - signal$boundary$phase) - (x/signal$thermDecayDist))
-    #           )
-    #         )
-    #     ),
-    #     order.by = tVals
-    #   )
-    # names(timeSeries) = paste0("x", xVals)
-
   # create a vector of amplitude values -- one for each xVal ("well location")
+
   amplitude =
     sapply(
       xVals,
-      function(x)  signal$boundary$amplitude * exp(-a *x)
+      function(x)  signal$boundary$amplitude * exp(-x/zdAdvective)
     )
   names(amplitude) = names(timeSeries)
 
@@ -140,7 +120,7 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
   phaseRadians =
     sapply(
       xVals,
-      function(x) (b * x + (2 * pi * signal$boundary$phase / signal$boundary$period))
+      function(x) ((x/vdAdvective + signal$boundary$phase) * (2 * pi / signal$boundary$period))
     )
   names(phaseRadians) = names(timeSeries)
 
@@ -156,28 +136,9 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
 
   names(xVals) = names(timeSeries)
   deltaXvals = derived2DArray(xVals[factorialDists$to] - xVals[factorialDists$from], names(timeSeries))
-  #   diffusivity_effectiveEmp = (eta * (2*pi / signal$boundary$period) * deltaXvals^2) / (log(ampRatio)^2 + deltaPhaseRadians^2)
-  #   advectiveThermVelEmp = (((2*pi / signal$boundary$period) * deltaXvals) / sqrt((log(ampRatio)^2 + deltaPhaseRadians^2))) * ((1 - eta^2) / sqrt(1 + eta^2))
-
-  #  derivedVals = derivedArray(ampRatio, deltaPhaseRadians, eta, names(seriesList))
-  #   empiricalVals = array(
-  #     data = c(diffusivity_effectiveEmp, advectiveThermVelEmp),
-  #     dim = c(length(xVals), length(xVals), 2),
-  #     dimnames = list(from = names(seriesList), to = names(seriesList), value = c("diffusivity_effectiveEmp", "advectiveThermVelEmp"))
-  #   )
-
-  #   myZoo = structure(
-  #     zoo(do.call(data.frame, args = c(seriesList)), order.by = tVals),
-  #     signal = signal,
-  #     phaseRadians = phaseRadians,
-  #     amplitude = amplitude,
-  #     derivedVals = derivedVals
-  #     # empiricalVals = empiricalVals,
-  #   )
-  #   class(myZoo) = c("thSeries", "thObservations", "temporheic", class(myZoo))
 
   #get rid of a few variables we don't want in the thSeries object.
-  rm(a,b, tVals, factorialDists)
+  rm(vdAdvective, zdAdvective, tVals, factorialDists)
 
   newSeries = .temperheic(
     thEnvir = environment(),
@@ -190,16 +151,3 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
   class(newSeries) = c("thSpecifiedSeries", class(newSeries))
   return(newSeries)
 }
-
-# #' @export
-# as.xts.thSeries = function(x, POSIXctRange, xRange = c(1, nrow(x)), trim = F, ...) {
-#   if(trim) {
-#     x = x[xRange[1]:xRange[2],]
-#   }
-#   numericRange = as.numeric(POSIXctRange)
-#   time = x$time[xRange]
-#   time2Date = lm(POSIXctRange ~ time)
-#   POSIXctIndex = as.POSIXct(round(predict(time2Date, newdata = x)), origin = "1970-01-01 00:00.00 UTC")
-#   class(x) = "data.frame"
-#   return(xts::as.xts(x, order.by = POSIXctIndex))
-# }
