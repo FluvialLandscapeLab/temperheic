@@ -190,7 +190,7 @@ fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin) {
     eD = as.data.frame(empiricalData),
     ampEst = ampEst,
     MoreArgs = list(
-      obsTime = seconds,
+      obsTime = seconds - seconds[1],
       grandMean = grandMean,
       period = periodInSeconds
     ),
@@ -210,7 +210,7 @@ fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin) {
   fitPhase[negAmps] = pi + fitPhase[negAmps]
   fitPhase = fitPhase%%(2*pi)
   outOfRange = fitPhase > optimizeRange[[2]]*2*pi
-  fitPhase[na.omit(outOfRange)] = fitPhase[na.omit(outOfRange)] - 2*pi
+  fitPhase[which(outOfRange)] = fitPhase[which(outOfRange)] - 2*pi
   # find permutative combintation of differences for fitPhases
   permuteCombos = expand.grid(1:length(fitPhase), 1:length(fitPhase))
   deltaPhaseRadians = apply(permuteCombos, 1, function(x) fitPhase[x[2]] - fitPhase[x[1]])
@@ -219,7 +219,7 @@ fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin) {
   # 1.0000000  1.1128460         NA  0.8985648  1.0000000         NA  0.5578810  0.6208431  1.0000000
   #1.666759e-16 -2.262049e-01            NA  2.262049e-01  1.563496e-14            NA  1.234432e+00  1.008227e+00 -1.000026e-16
 
-  return(list(deltaPhaseRadians = deltaPhaseRadians, ampRatio = ampRatio))
+  return(structure(list(deltaPhaseRadians = deltaPhaseRadians, ampRatio = ampRatio), amplitudes = fitAmp, phases = fitPhase))
 }
 
 

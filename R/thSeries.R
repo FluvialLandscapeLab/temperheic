@@ -27,8 +27,12 @@ thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmi
 
   if(laggedLinearFit) {
     results <- lagLinFit(empiricalData, period, optimizeRange, nmin)
+    phase = NA
+    amplitude = NA
   } else {
     results <- fitCosine(empiricalData, period, optimizeRange, nmin)
+    phase = attr(results, "phases")
+    amplitude = attr(results, "amplitudes")
   }
   ## ampRatio, deltaPhaseRadians, diagnalLocs, empiricalData, xVals, freq
   eta = -log(results$ampRatio)/results$deltaPhaseRadians  # See Luce et al. 2013
@@ -53,6 +57,8 @@ thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmi
   dispersivity = ((diffusivity_effective_empirical * aquifer$density_bulk * aquifer$spHeat_bulk) - aquifer$thermCond_bulk)  / (advectiveThermVelEmpirical * aquifer$density_bulk * aquifer$spHeat_bulk)
 
   hydraulicCond = darcyFlux / headGrad
+
+  rm(results, factorialDists, deltaXvals, envir = environment())
 
   newObservedSeries = .temperheic(
     thEnvir = environment(),
