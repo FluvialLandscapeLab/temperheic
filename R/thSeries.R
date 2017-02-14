@@ -105,7 +105,7 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
           c(
             lapply(
               xVals,
-              function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-x/zdAdvective) * cos((2 * pi / signal$boundary$period) * (tVals - signal$boundary$phase - (x/vdAdvective)))
+              function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-x/zdAdvective) * cos((2 * pi / signal$boundary$period) * ((tVals-tVals[1]) - signal$boundary$phase - (x/vdAdvective)))
             )
           )
       ),
