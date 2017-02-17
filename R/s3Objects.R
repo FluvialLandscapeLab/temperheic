@@ -231,15 +231,19 @@ thHydro = function(hydCond, dispersivity, headGrad, aquifer, specificUnits = thU
 thSignal = function(hydro, boundary) {
   if((!identical(attr(hydro, "specificUnits"), attr(boundary, "specificUnits")))) stop("specificUnits attribute of the thAquifer, thHydro, and thBoundary must be identical.")
 
-  ## ideally, pull these calculations into functions to avoid "cut/paste" antipattern
-  phaseVel_cond = sqrt(2 * hydro$diffusivity_cond * 2 * pi * boundary$frequency)
-  phaseVel_disp = sqrt(2 * hydro$diffusivity_disp * 2 * pi * boundary$frequency)
-  phaseVel = sqrt(2 * hydro$diffusivity_effective * 2 * pi * boundary$frequency)
+  # after Vogt et al., 2014; i.e. c
+  if(hydro$darcyFlux == 0){
+    phaseVel = sqrt(2 * hydro$diffusivity_cond * 2 * pi * boundary$frequency)
+    thermDecayDist = sqrt(2 * hydro$diffusivity_cond / (2 * pi * boundary$frequency))
+  } else{
+    num1 <- 64*(pi^2)*(boundary$frequency^2)*(hydro$diffusivity_effective^2)
+    rad1 <- (1 + (num1/(hydro$advectiveThermVel^4)))^0.5
+    rad2 <- (0.5 + (0.5*rad1))^0.5
+    phaseVel <- hydro$advectiveThermVel * rad2
+    thermDecayDist <- (2*hydro$diffusivity_effective)/(phaseVel-hydro$advectiveThermVel)
+  }
 
-  thermDecayDist_cond = sqrt(2 * hydro$diffusivity_cond / (2 * pi * boundary$frequency))
-  thermDecayDist_disp = sqrt(2 * hydro$diffusivity_disp / (2 * pi * boundary$frequency))
-  thermDecayDist = sqrt(2 * hydro$diffusivity_effective / (2 * pi * boundary$frequency))
-  pecletNumber = (hydro$advectiveThermVel * thermDecayDist_cond) / hydro$diffusivity_cond
+  pecletNumber = (hydro$advectiveThermVel * thermDecayDist) / hydro$diffusivity_cond
   dispersionDiffusionRatio = hydro$diffusivity_disp / hydro$diffusivity_cond
   specificUnits = attr(hydro$aquifer, "specificUnits")
 

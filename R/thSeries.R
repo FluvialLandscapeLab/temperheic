@@ -27,11 +27,11 @@ thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmi
 
   if(laggedLinearFit) {
     results <- lagLinFit(empiricalData, period, optimizeRange, nmin)
-    phase = NA
+    relativePhase = NA
     amplitude = NA
   } else {
     results <- fitCosine(empiricalData, period, optimizeRange, nmin)
-    phase = attr(results, "phases")
+    relativePhase = attr(results, "phases")
     amplitude = attr(results, "amplitudes")
   }
   ## ampRatio, deltaPhaseRadians, diagnalLocs, empiricalData, xVals, freq
@@ -85,15 +85,6 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
   # variable in eqn 8, Luce et al 2013
   #a = (1 / (2 * signal$hydro$diffusivity_effective)) * (sqrt(((sqrt((signal$hydro$advectiveThermVel^4) + (4 * 2 * pi * signal$boundary$frequency * signal$hydro$diffusivity_effective)^2) + signal$hydro$advectiveThermVel^2)/2)) - signal$hydro$advectiveThermVel)
   #b = (1 / (2 * signal$hydro$diffusivity_effective)) * sqrt(((sqrt((signal$hydro$advectiveThermVel^4) + (4 * 2 * pi * signal$boundary$frequency * signal$hydro$diffusivity_effective)^2) - signal$hydro$advectiveThermVel^2)/2))
-  # zdAdvective2 = 1/a
-  # vdAdvective2 = 1 / (b*(signal$boundary$period)/(2*pi))
-
-  # after Vogt 2014; i.e. c
-  num1 <- 64*(pi^2)*(signal$boundary$frequency^2)*(signal$hydro$diffusivity_effective^2)
-  rad1 <- (1 + (num1/(signal$hydro$advectiveThermVel^4)))^0.5
-  rad2 <- (0.5 + (0.5*rad1))^0.5
-  vdAdvective <- signal$hydro$advectiveThermVel * rad2
-  zdAdvective <- (2*signal$hydro$diffusivity_effective)/(vdAdvective-signal$hydro$advectiveThermVel)
 
   # create the individual time series from the vector of xVals ("well locations") specified by the user.
 
@@ -105,7 +96,7 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
           c(
             lapply(
               xVals,
-              function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-x/zdAdvective) * cos((2 * pi / signal$boundary$period) * ((tVals-tVals[1]) - signal$boundary$phase - (x/vdAdvective)))
+              function(x) signal$boundary$mean + signal$boundary$amplitude * exp(-x/signal$thermDecayDist) * cos((2 * pi / signal$boundary$period) * ((tVals-tVals[1]) - signal$boundary$phase - (x/signal$phaseVel)))
             )
           )
       ),
@@ -118,7 +109,7 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
   amplitude =
     sapply(
       xVals,
-      function(x)  signal$boundary$amplitude * exp(-x/zdAdvective)
+      function(x)  signal$boundary$amplitude * exp(-x/signal$thermDecayDist)
     )
   names(amplitude) = names(timeSeries)
 
@@ -126,7 +117,7 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
   phaseRadians =
     sapply(
       xVals,
-      function(x) ((x/vdAdvective + signal$boundary$phase) * (2 * pi / signal$boundary$period))
+      function(x) ((x/signal$phaseVel + signal$boundary$phase) * (2 * pi / signal$boundary$period))
     )
   names(phaseRadians) = names(timeSeries)
 
@@ -144,7 +135,7 @@ thSeries = function(signal, xVals, tVals, specificUnits) { #, ayeScale = 1, beeS
   deltaXvals = derived2DArray(xVals[factorialDists$to] - xVals[factorialDists$from], names(timeSeries))
 
   #get rid of a few variables we don't want in the thSeries object.
-  rm(vdAdvective, zdAdvective, tVals, factorialDists)
+  rm(tVals, factorialDists)
 
   newSeries = .temperheic(
     thEnvir = environment(),
