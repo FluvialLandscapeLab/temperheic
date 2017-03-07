@@ -78,8 +78,8 @@
 #'  includes all specified and derived parameters for the aquifer
 #'@export
 thAquifer = function (porosity, thermCond_sed, thermCond_h2o, spHeat_sed, spHeat_h2o, density_sed, density_h2o, specificUnits = thUnits()) {
-  spHeat_bulk = spHeat_sed * (1 - porosity) + spHeat_h2o * porosity # E M-1 T-1
-  density_bulk = density_sed * (1 - porosity) + density_h2o * porosity # E M-2 T-1
+#  spHeat_bulk = spHeat_sed * (1 - porosity) + spHeat_h2o * porosity # E M-1 T-1
+#  density_bulk = density_sed * (1 - porosity) + density_h2o * porosity # E M-2 T-1
 
   volHeatCap_h2o = spHeat_h2o * density_h2o # E L-3 T-1
   volHeatCap_sed = spHeat_sed * density_sed # E L-3 T-1
@@ -201,7 +201,7 @@ thHydro = function(hydCond, dispersivity, headGrad, aquifer, specificUnits = thU
   darcyFlux = hydCond * headGrad # Darcy velocity L t-1
   velocity_h2o = (darcyFlux / aquifer$porosity); # Water velocity L t-1
   #advectiveThermVel = darcyFlux * ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
-  advectiveThermVel = darcyFlux * ((aquifer$density_h2o * aquifer$spHeat_h2o) / aquifer$volHeatCap_bulk)
+  advectiveThermVel = darcyFlux * (aquifer$volHeatCap_h2o / aquifer$volHeatCap_bulk)
   #diffusivity_cond = aquifer$thermCond_bulk / (aquifer$density_bulk * aquifer$spHeat_bulk)
   diffusivity_cond = aquifer$thermCond_bulk / aquifer$volHeatCap_bulk
   diffusivity_disp = dispersivity * advectiveThermVel #* ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
