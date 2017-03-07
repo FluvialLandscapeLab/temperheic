@@ -50,11 +50,11 @@ thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmi
   # See Luce et al. 2013 equation #59
   diffusivity_effective_empirical = (eta * freq * deltaXvals^2) / ((log(ampRatio)^2) + deltaPhaseRadians^2)
 
-  darcyFlux = advectiveThermVelEmpirical * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o) )
+  darcyFlux = advectiveThermVelEmpirical * ((aquifer$volHeatCap_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o) )
 
   velocity_h2o = darcyFlux / aquifer$porosity
 
-  dispersivity = ((diffusivity_effective_empirical * aquifer$density_bulk * aquifer$spHeat_bulk) - aquifer$thermCond_bulk)  / (advectiveThermVelEmpirical * aquifer$density_bulk * aquifer$spHeat_bulk)
+  dispersivity = ((diffusivity_effective_empirical * aquifer$volHeatCap_bulk - aquifer$thermCond_bulk)  / (advectiveThermVelEmpirical * aquifer$volHeatCap_bulk))
 
   hydraulicCond = darcyFlux / headGrad
 
