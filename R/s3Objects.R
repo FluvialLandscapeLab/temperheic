@@ -56,12 +56,10 @@
 #'  of the aquifer.
 #'@param dispersivity Dispersivity (L) of the aquifer, appropriate for the the
 #'  scale of the flow path observed (see Gelher 20XX). ## needs to be updated according to Bons et al., 2015
-#'@param exponent Part of the non-linear dispersivity calculation of Bons et al., 2015
 #'@param headGrad Average head gradient (L L-1) in the same dimension (vertical
 #'  or horizonal) for the aquifer.
 #'@param porosity Porosity (L3 L-3) of the aquifer; ratio of water volume to
 #'  unit aquifer volume under saturated conditions.
-#'@param d50 median particle size of the bulk medium (L) ## used in Peclet number in the Bons et al., approach
 #'@param thermCond_sed Thermal conductivity (E t-1 L-1 T-1) of the sediment.
 #'@param thermCond_h2o Thermal conductivity (E t-1 L-1 T-1) of water.
 #'@param spHeat_sed Specific heat (E M-1 T-1) of the sediment.
@@ -194,7 +192,7 @@ thUnits = function(L = "m", M = "kg", t = "s", T = "degC", E = "kJ") {
 }
 
 #' @export
-thHydro = function(hydCond, d50, dispersivity = 0.001, headGrad, aquifer, exponent = 1.2, specificUnits = thUnits()) {
+thHydro = function(hydCond, dispersivity = 0.001, headGrad, aquifer, specificUnits = thUnits()) {
   if(!is.thUnits(specificUnits)) stop("Units must be specified as a 'thUnits' object; call 'thUnits()' to generate such an object.")
   if(!is.thAquifer(aquifer)) stop("The 'aquifer' argument must be a thAquifer object; call 'thAquifer()' to generate such an object.")
   if(!identical(specificUnits, attr(aquifer, "specificUnits"))) stop("The units of the aquifer are not the same as those specificed in 'specificUnits.'")
@@ -207,7 +205,8 @@ thHydro = function(hydCond, d50, dispersivity = 0.001, headGrad, aquifer, expone
   #diffusivity_cond = aquifer$thermCond_bulk / (aquifer$density_bulk * aquifer$spHeat_bulk)
   diffusivity_cond = aquifer$thermCond_bulk / aquifer$volHeatCap_bulk
   ### added the Rau exponentto explore Rau's 2012 solution which has vt squared
-  diffusivity_disp = dispersivity * advectiveThermVel^exponent #* ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
+  ### removed exponent
+  diffusivity_disp = dispersivity * advectiveThermVel #* ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
   diffusivity_effective = diffusivity_disp + diffusivity_cond
 
   newHydro = .temperheic(

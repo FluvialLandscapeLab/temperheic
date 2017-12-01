@@ -64,7 +64,7 @@ thObservedSeries = function(empiricalData,
 
   velocity_h2o = darcyFlux / aquifer$porosity
 
-  exponent = log((diffusivity_effective_empirical - hydro$diffusivity_cond)/hydro$dispersivity)/log(advectiveThermVelEmpirical)
+  #exponent = log((diffusivity_effective_empirical - hydro$diffusivity_cond)/hydro$dispersivity)/log(advectiveThermVelEmpirical)
 
   dispersivity = ((diffusivity_effective_empirical * aquifer$volHeatCap_bulk - aquifer$thermCond_bulk)  / (advectiveThermVelEmpirical * aquifer$volHeatCap_bulk))
 
