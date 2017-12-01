@@ -1,7 +1,17 @@
 
 #'@rdname thSeries
 #'@export
-thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmin, freq = (2*pi)/period, optimizeRange = c(-1/8, 7/8), specificUnits = thUnits(), laggedLinearFit = T) {
+thObservedSeries = function(empiricalData,
+                            xVals,
+                            aquifer,
+                            hydro,
+                            period,
+                            headGrad,
+                            nmin,
+                            freq = (2*pi)/period,
+                            optimizeRange = c(-1/8, 7/8),
+                            specificUnits = thUnits(),
+                            laggedLinearFit = T) {
 
   if((optimizeRange[2] - optimizeRange[1]) != 1) stop("max optimize range - min optimize range must = 1.0")
   if(!inherits(empiricalData, "zoo")) stop("EmpiricalData must be a zoo object")
@@ -54,9 +64,21 @@ thObservedSeries = function(empiricalData, xVals, aquifer, period, headGrad, nmi
 
   velocity_h2o = darcyFlux / aquifer$porosity
 
+  exponent = log((diffusivity_effective_empirical - hydro$diffusivity_cond)/hydro$dispersivity)/log(advectiveThermVelEmpirical)
+
   dispersivity = ((diffusivity_effective_empirical * aquifer$volHeatCap_bulk - aquifer$thermCond_bulk)  / (advectiveThermVelEmpirical * aquifer$volHeatCap_bulk))
 
   hydraulicCond = darcyFlux / headGrad
+
+  rad1A = (advectiveThermVelEmpirical^4 + (4 * 2 * pi * freq * diffusivity_effective_empirical)^2)^0.5
+  rad22A = sqrt(2)/(((rad1A + advectiveThermVelEmpirical^2))^0.5 - sqrt(2)*advectiveThermVelEmpirical)
+  thermDecayDist = 2*diffusivity_effective_empirical * rad22A
+
+  rad1B = (advectiveThermVelEmpirical^4 + (4 * 2 * pi * freq * diffusivity_effective_empirical)^2)^0.5
+  rad22B = sqrt(2)/abs((rad1B - advectiveThermVelEmpirical^2))^0.5
+  phaseVel = 2*diffusivity_effective_empirical * rad22B  * 2 * pi * freq
+
+  pecletNumber = (advectiveThermVelEmpirical * thermDecayDist)/diffusivity_effective_empirical
 
   rm(results, factorialDists, deltaXvals, envir = environment())
 
