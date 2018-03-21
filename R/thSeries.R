@@ -4,22 +4,23 @@
 thObservedSeries = function(empiricalData,
                             xVals,
                             aquifer,
-                            hydro,
                             period,
                             headGrad,
                             nmin,
                             freq = (2*pi)/period,
                             optimizeRange = c(-1/8, 7/8),
                             specificUnits = thUnits(),
-                            laggedLinearFit = T) {
+                            laggedLinearFit = F,
+                            empiricalDataPeriods = rep(1, ncol(empiricalData))) {
 
+  if(laggedLinearFit) stop("laggedLinearFit method has been depricated. Use laggedLinearFit = F.")
   if((optimizeRange[2] - optimizeRange[1]) != 1) stop("max optimize range - min optimize range must = 1.0")
   if(!inherits(empiricalData, "zoo")) stop("EmpiricalData must be a zoo object")
   # Check to be sure that empiricalData column names are the same as the names of xVals.
   if(!identical(sort(names(empiricalData)), sort(names(xVals)))) stop("The names of the columns in empirical data must match the names of xvals.")
   # Ensure that xVals are in ascending order.
   xVals = xVals[order(xVals)]
-  if(!xVals[1] == 0) stop("xVals must include zero to designate input signal.")
+  if(xVals[1] != 0) stop("xVals must include zero to designate input signal.")
   # Reorder empiricalData columns to match xVals.
   empiricalData = empiricalData[,names(xVals)]
 
@@ -40,7 +41,7 @@ thObservedSeries = function(empiricalData,
     relativePhase = NA
     amplitude = NA
   } else {
-    results <- fitCosine(empiricalData, period, optimizeRange, nmin)
+    results <- fitCosine(empiricalData, period, optimizeRange, nmin, empiricalDataPeriods)
     relativePhase = attr(results, "phases")
     amplitude = attr(results, "amplitudes")
   }

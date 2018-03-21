@@ -165,7 +165,7 @@ derived2DArray = function(x, seriesNames) {
 }
 
 
-fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin) {
+fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin, empiricalDataPeriods) {
 
   ## using nls to fit the data
   means = sapply(empiricalData, mean)
@@ -183,9 +183,18 @@ fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin) {
           start = list(AmpY._ = ampEst, PhaY._ = 0),
           na.action = "na.exclude"
         )
+        # if the fit amplitude is negative, negate it and add pi radians to the phase
+        # modulus phase by 2pi to make sure the phase is between 0 and 2pi radians
+        if(coef(fitResult)[1] < 0){
+          results = c(fitAmp = -coef(fitResult)[1], fitPhase = (coef(fitResult)[2] + pi)%%(2*pi))
+        }else{
+          results = c(fitAmp = coef(fitResult)[1], fitPhase = coef(fitResult)[2]%%(2*pi))
+        }
+
       } else {
-        NA
+        results = c(fitAmp = NA, fitPhase = NA)
       }
+      return(results)
     },
     eD = as.data.frame(empiricalData),
     ampEst = ampEst,
@@ -194,25 +203,19 @@ fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin) {
       grandMean = grandMean,
       period = periodInSeconds
     ),
-    SIMPLIFY = F
+    SIMPLIFY = T
   )
 
-  #There are infinite solutions for fitting cosine. If amplitude is negative,
-  #phase is off by pi. Additionally, phase can be outside the range of 0 to
-  #2*pi, which can be corrected by modulus by 2*pi. The following code looks for
-  #negative amplitudes and multiplies by -1 while adding pi to associated
-  #phases. It then applies modulus 2*pi to all phases.  This ensure positive
-  #amplitudes and phases between 0 and 2*pi.
-  fitAmp = sapply(fits, function(x) ifelse(identical(NA, x), NA, coef(x)[1]))
-  negAmps = which(fitAmp < 0)
-  fitPhase = sapply(fits, function(x) ifelse(identical(NA, x), NA, coef(x)[2]))
-  fitAmp[negAmps] = -1 * fitAmp[negAmps]
-  fitPhase[negAmps] = pi + fitPhase[negAmps]
-  fitPhase = fitPhase%%(2*pi)
-  outOfRange = fitPhase > optimizeRange[[2]]*2*pi
-  fitPhase[which(outOfRange)] = fitPhase[which(outOfRange)] - 2*pi
-  # find permutative combintation of differences for fitPhases
-  permuteCombos = expand.grid(1:length(fitPhase), 1:length(fitPhase))
+  fitAmp = fits[1,]
+  fitPhase = fits[2,]
+  initialPhase = fitPhase[1]
+  relativeRange = 2*pi*optimizeRange + initialPhase
+  fitPhase[fitPhase < relativeRange[1]] = fitPhase[fitPhase < relativeRange[1]] + 2*pi
+  fitPhase = fitPhase + (empiricalDataPeriods - 1)*2*pi
+  #outOfRange = fitPhase > optimizeRange[[2]]*2*pi + fitPhase[1]
+  #fitPhase[which(outOfRange)] = fitPhase[which(outOfRange)] - 2*pi
+  ## find permutative combintation of differences for fitPhases
+  permuteCombos = expand.grid(1:length(fitPhase), 1:length(fitAmp))
   deltaPhaseRadians = apply(permuteCombos, 1, function(x) fitPhase[x[2]] - fitPhase[x[1]])
   ampRatio = apply(permuteCombos, 1, function(x) fitAmp[x[2]] / fitAmp[x[1]])
 
