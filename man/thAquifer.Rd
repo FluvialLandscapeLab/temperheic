@@ -57,7 +57,7 @@ kilojoules.}
 of the aquifer.}
 
 \item{dispersivity}{Dispersivity (L) of the aquifer, appropriate for the the
-scale of the flow path observed (see Gelher 20XX).}
+scale of the flow path observed (see Gelher 20XX). ## needs to be updated according to Bons et al., 2015}
 
 \item{headGrad}{Average head gradient (L L-1) in the same dimension (vertical
 or horizonal) for the aquifer.}

@@ -55,7 +55,7 @@
 #'@param hydCond Hydraulic conductivity (L t-1) (either vertical or horizontal)
 #'  of the aquifer.
 #'@param dispersivity Dispersivity (L) of the aquifer, appropriate for the the
-#'  scale of the flow path observed (see Gelher 20XX).
+#'  scale of the flow path observed (see Gelher 20XX). ## needs to be updated according to Bons et al., 2015
 #'@param headGrad Average head gradient (L L-1) in the same dimension (vertical
 #'  or horizonal) for the aquifer.
 #'@param porosity Porosity (L3 L-3) of the aquifer; ratio of water volume to
@@ -78,8 +78,8 @@
 #'  includes all specified and derived parameters for the aquifer
 #'@export
 thAquifer = function (porosity, thermCond_sed, thermCond_h2o, spHeat_sed, spHeat_h2o, density_sed, density_h2o, specificUnits = thUnits()) {
-  spHeat_bulk = spHeat_sed * (1 - porosity) + spHeat_h2o * porosity # E M-1 T-1
-  density_bulk = density_sed * (1 - porosity) + density_h2o * porosity # E M-2 T-1
+#  spHeat_bulk = spHeat_sed * (1 - porosity) + spHeat_h2o * porosity # E M-1 T-1
+#  density_bulk = density_sed * (1 - porosity) + density_h2o * porosity # E M-2 T-1
 
   volHeatCap_h2o = spHeat_h2o * density_h2o # E L-3 T-1
   volHeatCap_sed = spHeat_sed * density_sed # E L-3 T-1
@@ -120,6 +120,7 @@ thAquifer = function (porosity, thermCond_sed, thermCond_h2o, spHeat_sed, spHeat
 #' @export
 thBoundary = function(mean, amplitude, phase, period, specificUnits = thUnits()) {
   frequency = 1/period
+  #frequency = (2*pi)/period
   newBoundary = .temperheic(
     thEnvir = environment(),
     thClass = "thBoundary",
@@ -191,19 +192,21 @@ thUnits = function(L = "m", M = "kg", t = "s", T = "degC", E = "kJ") {
 }
 
 #' @export
-thHydro = function(hydCond, dispersivity, headGrad, aquifer, specificUnits = thUnits()) {
+thHydro = function(hydCond, dispersivity = 0.001, headGrad, aquifer, specificUnits = thUnits()) {
   if(!is.thUnits(specificUnits)) stop("Units must be specified as a 'thUnits' object; call 'thUnits()' to generate such an object.")
   if(!is.thAquifer(aquifer)) stop("The 'aquifer' argument must be a thAquifer object; call 'thAquifer()' to generate such an object.")
   if(!identical(specificUnits, attr(aquifer, "specificUnits"))) stop("The units of the aquifer are not the same as those specificed in 'specificUnits.'")
 
-  #pull these calucations into fuctions for reuse in thObservedHydro
+  #pull these calculations into functions for reuse in thObservedHydro
   darcyFlux = hydCond * headGrad # Darcy velocity L t-1
   velocity_h2o = (darcyFlux / aquifer$porosity); # Water velocity L t-1
-  #advectiveThermVel = darcyFlux * (aquifer$volHeatCap_h2o / aquifer$volHeatCap_bulk) # L t-1; areally averaged rate of heat movement (eqn 5, Luce et al 2013)
-  advectiveThermVel = darcyFlux * ((aquifer$density_bulk * aquifer$spHeat_bulk) / (aquifer$density_h2o * aquifer$spHeat_h2o))
-  #diffusivity_cond = aquifer$thermCond_bulk / aquifer$volHeatCap_bulk
-  diffusivity_cond = aquifer$thermCond_bulk / (aquifer$density_bulk * aquifer$spHeat_bulk)
-  diffusivity_disp = dispersivity * darcyFlux * ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
+  #advectiveThermVel = darcyFlux * ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
+  advectiveThermVel = darcyFlux * (aquifer$volHeatCap_h2o / aquifer$volHeatCap_bulk)
+  #diffusivity_cond = aquifer$thermCond_bulk / (aquifer$density_bulk * aquifer$spHeat_bulk)
+  diffusivity_cond = aquifer$thermCond_bulk / aquifer$volHeatCap_bulk
+  ### added the Rau exponentto explore Rau's 2012 solution which has vt squared
+  ### removed exponent
+  diffusivity_disp = dispersivity * advectiveThermVel #* ((aquifer$density_h2o * aquifer$spHeat_h2o) / (aquifer$density_bulk * aquifer$spHeat_bulk))
   diffusivity_effective = diffusivity_disp + diffusivity_cond
 
   newHydro = .temperheic(
@@ -231,17 +234,40 @@ thHydro = function(hydCond, dispersivity, headGrad, aquifer, specificUnits = thU
 #' @export
 thSignal = function(hydro, boundary) {
   if((!identical(attr(hydro, "specificUnits"), attr(boundary, "specificUnits")))) stop("specificUnits attribute of the thAquifer, thHydro, and thBoundary must be identical.")
+  # pecletNumber = (hydro$velocity_h2o * hydro$d50) / hydro$diffusivity_cond
+  # diffusivity_disp = hydro$dispersivity * pecletNumber^hydro$exponent
+  # diffusivity_effective = hydro$diffusivity_cond + diffusivity_disp
 
-  ## ideally, pull these calculations into functions to avoid "cut/paste" antipattern
-  phaseVel_cond = sqrt(2 * hydro$diffusivity_cond * 2 * pi * boundary$frequency)
-  phaseVel_disp = sqrt(2 * hydro$diffusivity_disp * 2 * pi * boundary$frequency)
-  phaseVel = sqrt(2 * hydro$diffusivity_effective * 2 * pi * boundary$frequency)
+    # after Vogt et al., 2014; i.e. c
+  if(hydro$darcyFlux == 0){
+    phaseVel = sqrt(2 * hydro$diffusivity_cond * 2 * pi * boundary$frequency)
+    thermDecayDist = sqrt(2 * hydro$diffusivity_cond / (2 * pi * boundary$frequency))
+  } else{
+    # num1 <- 64*(pi^2)*(boundary$frequency^2)*(hydro$diffusivity_effective^2)
+    # rad1 <- (1 + (num1/(hydro$advectiveThermVel^4)))^0.5
+    # rad2 <- (0.5 + (0.5*rad1))^0.5
+    # phaseVel <- hydro$advectiveThermVel * rad2
+    # thermDecayDist <- (2*hydro$diffusivity_effective)/(phaseVel-hydro$advectiveThermVel)
 
-  thermDecayDist_cond = sqrt(2 * hydro$diffusivity_cond / (2 * pi * boundary$frequency))
-  thermDecayDist_disp = sqrt(2 * hydro$diffusivity_disp / (2 * pi * boundary$frequency))
-  thermDecayDist = sqrt(2 * hydro$diffusivity_effective / (2 * pi * boundary$frequency))
-  pecletNumber = (hydro$advectiveThermVel * thermDecayDist) / hydro$diffusivity_cond
-  dispersionDiffusionRatio = hydro$diffusivity_disp / hydro$diffusivity_cond
+    ### updated formulas below based on PDE solutions of Logan, Luce, and Vogt
+    rad1A = (hydro$advectiveThermVel^4 + (4 * 2 * pi * boundary$frequency * hydro$diffusivity_effective)^2)^0.5
+    rad22A = sqrt(2)/(((rad1A + hydro$advectiveThermVel^2))^0.5 - sqrt(2)*hydro$advectiveThermVel)
+    thermDecayDist = 2*hydro$diffusivity_effective * rad22A
+
+    rad1B = (hydro$advectiveThermVel^4 + (4 * 2 * pi * boundary$frequency * hydro$diffusivity_effective)^2)^0.5
+    rad22B = sqrt(2)/abs((rad1B - hydro$advectiveThermVel^2))^0.5
+    phaseVel = 2*hydro$diffusivity_effective * rad22B  * 2 * pi * boundary$frequency
+  }
+  pecletNumberDisp = (hydro$advectiveThermVel * thermDecayDist) / hydro$diffusivity_disp
+  pecletNumberCond = (hydro$advectiveThermVel * thermDecayDist) / hydro$diffusivity_cond
+  pecletNumberEff = (hydro$advectiveThermVel * thermDecayDist) / hydro$diffusivity_effective
+
+  pecletNumberPhaseDisp = (phaseVel * thermDecayDist) / hydro$diffusivity_disp
+  pecletNumberPhaseCond = (phaseVel * thermDecayDist) / hydro$diffusivity_cond
+  pecletNumberPhaseEff = (phaseVel * thermDecayDist) / hydro$diffusivity_effective
+
+  dispersionDiffusionRatioCond = hydro$diffusivity_disp / hydro$diffusivity_cond
+  dispersionDiffusionRatioEff = hydro$diffusivity_disp / hydro$diffusivity_effective
   specificUnits = attr(hydro$aquifer, "specificUnits")
 
   newSignal = .temperheic(

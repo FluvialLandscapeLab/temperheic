@@ -68,7 +68,16 @@ permuteSeries = function(sig, x, t) {
 
 aquiferSeriesList = mapply(permuteSeries, aquiferSignalList, xVals, tVals, SIMPLIFY = F )
 
-lapply(aquiferSeriesList$annual[plotList$annual], htPlot)
-lapply(aquiferSeriesList$daily[plotList$daily], htPlot)
+# lapply(aquiferSeriesList$annual[plotList$annual], htPlot)
+# lapply(aquiferSeriesList$daily[plotList$daily], htPlot)
 
-testObsSeries = thObservedSeries(aquiferSeriesList$annual[[3]]$timeSeries[,1:3], c(0,100,200), 365*86400, myAquifer, 180)
+testObsSeries = thObservedSeries(empiricalData = aquiferSeriesList$annual[[3]]$timeSeries[,1:4],
+                                 xVals = c(x0 = 0, x100 = 100, x200 = 200, x500 = 500),
+                                 period = 365*86400,
+                                 aquifer = myAquifer,
+                                 nmin = 180,
+                                 specificUnits = myUnits,
+                                 laggedLinearFit = F,
+                                 headGrad = 0.01,
+                                 optimizeRange = c(0,1),
+                                 empiricalDataPeriods = c(1,1,1,1))

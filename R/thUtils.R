@@ -1,3 +1,5 @@
+
+
 #' @export
 as.xts.thSeries = function(x, POSIXct.origin) {
   theOrder = as.POSIXct(x$time, origin = POSIXct.origin)
@@ -95,14 +97,14 @@ htPlot = function(myThSeries, POSIXct.origin = "2014-01-01 00:00:00") {
 #'   MSR is associated with lags that are in phase rather than out of phase) is
 #'   always returned.
 #' @param lag Time that time series y lags time series x.
-#' @param x,y Time series observations as vectors
+#' @param thSeriesPair Zoo object with two columns -- the starting sine wave and ending sine wave
 #' @param t A vector of times of observations of values in x and y
 #' @param nmin Minimum number of x.y pairs desired (see Details)
 #' @export
 laggedMSR = function(lag, thSeriesPair, nmin) {
   lData = laggedData(lag, thSeriesPair)
   if(nrow(lData) < nmin) {
-    result = -1
+    result = NULL
   } else {
     fit = laggedModel(lData)
     a = coefficients(fit)
@@ -163,8 +165,102 @@ derived2DArray = function(x, seriesNames) {
 }
 
 
-fitCosine = function(observations, period) {
-  return("We need to implement this.")
+fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin, empiricalDataPeriods) {
+
+  ## using nls to fit the data
+  means = sapply(empiricalData, mean)
+  grandMean = mean(means)
+  ampEst = sapply(empiricalData, function(x) (max(x) - min(x))/2)
+  seconds = as.numeric(zoo::index(empiricalData))
+
+  fits = mapply(
+    function(eD, ampEst, obsTime, grandMean, period){
+      if(length(na.omit(eD)) >= nmin) {
+        # put in teeny tiny bit of noise so nls will fit a cosine to data that represent a perfect wave
+        eD = eD + runif(length(eD), min = -(mean(eD) * 0.0001), max = mean(eD)* 0.0001)
+        fitResult = nls(
+          formula = eD ~ grandMean + AmpY._ * cos((2*pi/period) * obsTime - PhaY._),
+          start = list(AmpY._ = ampEst, PhaY._ = 0),
+          na.action = "na.exclude"
+        )
+        # if the fit amplitude is negative, negate it and add pi radians to the phase
+        # modulus phase by 2pi to make sure the phase is between 0 and 2pi radians
+        if(coef(fitResult)[1] < 0){
+          results = c(fitAmp = -coef(fitResult)[1], fitPhase = (coef(fitResult)[2] + pi)%%(2*pi))
+        }else{
+          results = c(fitAmp = coef(fitResult)[1], fitPhase = coef(fitResult)[2]%%(2*pi))
+        }
+
+      } else {
+        results = c(fitAmp = NA, fitPhase = NA)
+      }
+      return(results)
+    },
+    eD = as.data.frame(empiricalData),
+    ampEst = ampEst,
+    MoreArgs = list(
+      obsTime = seconds - seconds[1],
+      grandMean = grandMean,
+      period = periodInSeconds
+    ),
+    SIMPLIFY = T
+  )
+
+  fitAmp = fits[1,]
+  fitPhase = fits[2,]
+  initialPhase = fitPhase[1]
+  relativeRange = 2*pi*optimizeRange + initialPhase
+  fitPhase[fitPhase < relativeRange[1]] = fitPhase[fitPhase < relativeRange[1]] + 2*pi
+  fitPhase = fitPhase + (empiricalDataPeriods - 1)*2*pi
+  #outOfRange = fitPhase > optimizeRange[[2]]*2*pi + fitPhase[1]
+  #fitPhase[which(outOfRange)] = fitPhase[which(outOfRange)] - 2*pi
+  ## find permutative combintation of differences for fitPhases
+  permuteCombos = expand.grid(1:length(fitPhase), 1:length(fitAmp))
+  deltaPhaseRadians = apply(permuteCombos, 1, function(x) fitPhase[x[2]] - fitPhase[x[1]])
+  ampRatio = apply(permuteCombos, 1, function(x) fitAmp[x[2]] / fitAmp[x[1]])
+
+  # 1.0000000  1.1128460         NA  0.8985648  1.0000000         NA  0.5578810  0.6208431  1.0000000
+  #1.666759e-16 -2.262049e-01            NA  2.262049e-01  1.563496e-14            NA  1.234432e+00  1.008227e+00 -1.000026e-16
+
+  return(structure(list(deltaPhaseRadians = deltaPhaseRadians, ampRatio = ampRatio), amplitudes = fitAmp, phases = fitPhase))
 }
 
 
+lagLinFit <- function(empiricalData, periodInSeconds, optimizeRange, nmin) {
+  combos = expand.grid(from = names(empiricalData), to = names(empiricalData), stringsAsFactors = F)
+  # calculate phases using phase shifting approach
+  dphase = t(
+    sapply(
+      1:nrow(combos),
+      function(row) {
+        if(row %in% diagonalLocs) {
+          result = list(minimum = 0, objective = 0)
+        } else {
+          result = optimize(f = laggedMSR, interval = periodInSeconds * optimizeRange, thSeriesPair = empiricalData[,as.character(combos[row,])], nmin = nmin)
+        }
+        return(result)
+      }
+    )
+  )
+
+  dphase[dphase[,"objective"] < 0,"minimum"] = NA
+  dphase = unlist(dphase[,"minimum"])
+  deltaPhaseRadians = dphase*2*pi/periodInSeconds
+
+  ampRatio = sapply(
+    1:nrow(combos),
+    function(rowIndex) {
+      if(is.na(dphase[rowIndex])) {
+        result = NA
+      } else {
+        result = laggedData(dphase[rowIndex], empiricalData[,as.character(combos[rowIndex,])])
+        result = laggedModel(result)
+        result = coefficients(result)[2]
+      }
+      return(result)
+    }
+  )
+
+  return(list(deltaPhaseRadians = deltaPhaseRadians, ampRatio = ampRatio))
+
+}
