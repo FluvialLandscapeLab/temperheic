@@ -165,21 +165,21 @@ derived2DArray = function(x, seriesNames) {
 }
 
 
-fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin, empiricalDataPeriods) {
+fitCosine = function(empiricalData, boundaryMean, periodInSeconds, optimizeRange, nmin, empiricalDataPeriods) {
 
+  # means = sapply(empiricalData, mean)
+  # grandMean = mean(means)
   ## using nls to fit the data
-  means = sapply(empiricalData, mean)
-  grandMean = mean(means)
   ampEst = sapply(empiricalData, function(x) (max(x) - min(x))/2)
   seconds = as.numeric(zoo::index(empiricalData))
 
   fits = mapply(
-    function(eD, ampEst, obsTime, grandMean, period){
+    function(eD, ampEst, obsTime, boundaryMean, period){
       if(length(na.omit(eD)) >= nmin) {
         # put in teeny tiny bit of noise so nls will fit a cosine to data that represent a perfect wave
         eD = eD + runif(length(eD), min = -(mean(eD) * 0.0001), max = mean(eD)* 0.0001)
         fitResult = nls(
-          formula = eD ~ grandMean + AmpY._ * cos((2*pi/period) * obsTime - PhaY._),
+          formula = eD ~ boundaryMean + AmpY._ * cos((2*pi/period) * obsTime - PhaY._),
           start = list(AmpY._ = ampEst, PhaY._ = 0),
           na.action = "na.exclude"
         )
@@ -200,7 +200,7 @@ fitCosine = function(empiricalData, periodInSeconds, optimizeRange, nmin, empiri
     ampEst = ampEst,
     MoreArgs = list(
       obsTime = seconds - seconds[1],
-      grandMean = grandMean,
+      boundaryMean = boundaryMean,
       period = periodInSeconds
     ),
     SIMPLIFY = T

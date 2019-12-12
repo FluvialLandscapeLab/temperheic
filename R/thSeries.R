@@ -4,6 +4,7 @@
 thObservedSeries = function(empiricalData,
                             xVals,
                             aquifer,
+                            boundaryMean,
                             period,
                             headGrad,
                             nmin,
@@ -41,7 +42,7 @@ thObservedSeries = function(empiricalData,
     relativePhase = NA
     amplitude = NA
   } else {
-    results <- fitCosine(empiricalData, period, optimizeRange, nmin, empiricalDataPeriods)
+    results <- fitCosine(empiricalData, boundaryMean, period, optimizeRange, nmin, empiricalDataPeriods)
     relativePhase = attr(results, "phases")
     amplitude = attr(results, "amplitudes")
   }
@@ -81,7 +82,7 @@ thObservedSeries = function(empiricalData,
 
   pecletNumber = (advectiveThermVelEmpirical * thermDecayDist)/diffusivity_effective_empirical
 
-  rm(results, factorialDists, deltaXvals, envir = environment())
+  rm(results, factorialDists, deltaXvals, rad1A, rad22A, rad1B, rad22B, envir = environment())
 
   newObservedSeries = .temperheic(
     thEnvir = environment(),

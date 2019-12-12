@@ -71,8 +71,11 @@ aquiferSeriesList = mapply(permuteSeries, aquiferSignalList, xVals, tVals, SIMPL
 # lapply(aquiferSeriesList$annual[plotList$annual], htPlot)
 # lapply(aquiferSeriesList$daily[plotList$daily], htPlot)
 
-testObsSeries = thObservedSeries(empiricalData = aquiferSeriesList$annual[[3]]$timeSeries[,1:4],
+chosenSeries = 3
+
+testObsSeries = thObservedSeries(empiricalData = aquiferSeriesList$annual[[chosenSeries]]$timeSeries[,1:4],
                                  xVals = c(x0 = 0, x100 = 100, x200 = 200, x500 = 500),
+                                 boundaryMean = aquiferSeriesList$annual[[chosenSeries]]$signal$boundary$mean,
                                  period = 365*86400,
                                  aquifer = myAquifer,
                                  nmin = 180,

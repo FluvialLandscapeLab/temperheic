@@ -136,6 +136,9 @@ thBoundary = function(mean, amplitude, phase, period, specificUnits = thUnits())
   return(newBoundary)
 }
 
+# CANT FIND ANY REMAINING REFERENCE TO THE NEXT FUNCTION.  fitCosine no longer
+# matches signature in this function.  Commenting it out.
+
 # Fit a cos wave to the specified column in the series.  Probably best to use lm
 # rather than nls to avoid issues of initial guesses.  Byron has code for this.
 # NOTE: an observedBoundary object cannot be calculated if we use our "regress
@@ -143,11 +146,12 @@ thBoundary = function(mean, amplitude, phase, period, specificUnits = thUnits())
 # ampRatio and phaseLag (not amplitude and phase).  So, interestingly, for a
 # thObservedSeries, the mean, amplitude, and phase of the "boundary" element
 # will be NULL.
-.thObservedBoundary = function(observations, period) {
-  return(fitCosine(obserations, period))
-  # might have to set class or other attributes before returning results of
-  # fitCosine
-}
+#
+#.thObservedBoundary = function(observations, period) {
+#  return(fitCosine(obserations, period))
+# might have to set class or other attributes before returning results of
+# fitCosine
+#}
 
 #' @rdname thAquifer
 #' @details \code{thUnits} objects include unit labels for the parameter values
