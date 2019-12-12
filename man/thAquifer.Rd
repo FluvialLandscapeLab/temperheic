@@ -152,4 +152,3 @@ The \code{temperheic} package relies on three different S3
   \code{thBoundary} objects agree with the unit labels displayed when the
   object is printed.
 }
-

@@ -5,8 +5,8 @@
 \alias{thSeries}
 \title{Create thSeries and thObservation Objects.}
 \usage{
-thObservedSeries(empiricalData, xVals, period, aquifer, hydro, nmin, freq = (2
-  * pi)/period, optimizeRange = c(-period/8, period * 7/8),
+thObservedSeries(empiricalData, xVals, period, aquifer, hydro, nmin,
+  freq = (2 * pi)/period, optimizeRange = c(-period/8, period * 7/8),
   specificUnits = thUnits())
 
 thSeries(signal, xVals, tVals, specificUnits)
@@ -15,4 +15,3 @@ thSeries(signal, xVals, tVals, specificUnits)
 thObservations are \code{\link{zoo}} objects.  Each column contains a
 temperature record for a different well in the aquifer.  thSeries
 }
-
