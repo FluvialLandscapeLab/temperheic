@@ -88,12 +88,13 @@ generateExampleThObservedSeries <- function(
   {
     empiricalData = x$timeSeries
     xVals = x$xVals
+    boundaryMean = x$signal$boundary$mean
     period = x$signal$boundary$period
     hydro = x$signal$hydro
     freq = (2*pi)/period
     optimizeRange = periodOptimizeRange
     specificUnits = attr(x, "specificUnits")
-    thObservedSeries(empiricalData, xVals, hydro$aquifer, period, hydro$headGrad, nmin, freq, optimizeRange, specificUnits, laggedLinearFit)
+    thObservedSeries(empiricalData, xVals, hydro$aquifer, boundaryMean, period, hydro$headGrad, nmin, freq, optimizeRange, specificUnits, laggedLinearFit)
   }
 
   mapply(
